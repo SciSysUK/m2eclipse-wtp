@@ -14,6 +14,7 @@ import org.eclipse.core.runtime.IPath;
 import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.OverlaySelfComponent;
 import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.OverlayVirtualArchiveComponent;
 import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.OverlayVirtualComponent;
+import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.v2.ProjectOverlayVirtualComponent;
 
 /**
  * Overlay Component Core
@@ -23,7 +24,7 @@ import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.OverlayVirtualCompo
 public class OverlayComponentCore {
 	
 	public static IOverlayVirtualComponent createOverlayComponent(IProject aProject) {
-		return new OverlayVirtualComponent(aProject);
+		return new ProjectOverlayVirtualComponent(aProject);
 	}
 
 	//TODO check and prevent circular references

@@ -128,7 +128,7 @@ public class OverlayReferenceResolver implements IReferenceResolver {
 	if (p == null) {
 		throw new IllegalArgumentException(name + " is not a workspace project");
 	}
-	return new OverlayVirtualComponent(p);
+	return OverlayComponentCore.createOverlayComponent(p);
   }
 
   public boolean canResolve(IVirtualReference reference) {
