@@ -2,6 +2,7 @@ package org.maven.ide.eclipse.wtp;
 
 import java.util.List;
 
+import org.codehaus.plexus.interpolation.PrefixedObjectValueSource;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.m2e.core.project.ResolverConfiguration;
@@ -15,6 +16,7 @@ import org.maven.ide.eclipse.wtp.common.tests.TestServerUtil;
 import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.OverlaySelfComponent;
 import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.OverlayVirtualArchiveComponent;
 import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.OverlayVirtualComponent;
+import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.v2.ProjectOverlayVirtualComponent;
 
 public class OverlayTest extends AbstractWTPTestCase {
 
@@ -65,7 +67,7 @@ public class OverlayTest extends AbstractWTPTestCase {
       
       assertEquals(2, references.length);
       
-      assertEquals(OverlayVirtualComponent.class, references[0].getReferencedComponent().getClass());
+      assertEquals(ProjectOverlayVirtualComponent.class, references[0].getReferencedComponent().getClass());
       assertEquals(OverlaySelfComponent.class, references[1].getReferencedComponent().getClass());
       
       IServer server = TestServerUtil.createPreviewServer();
