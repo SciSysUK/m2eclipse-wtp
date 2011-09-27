@@ -24,23 +24,19 @@ import org.eclipse.wst.common.componentcore.resources.IVirtualComponent;
 import org.eclipse.wst.common.componentcore.resources.IVirtualFolder;
 import org.eclipse.wst.common.componentcore.resources.IVirtualReference;
 import org.eclipse.wst.common.componentcore.resources.IVirtualResource;
+import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.OverlayVirtualComponent;
 import org.maven.ide.eclipse.wtp.overlay.modulecore.IOverlayVirtualComponent;
 
 /**
  * A {@link IOverlayVirtualComponent} that deals with references to other workspace {@link IProject projects}. This
- * component can be used to support the following types of overlay:
- * <ul>
- * <li><b>Standard Overlay</b> : A reference to another project that will be completely consumed. The referenced project
- * will be packaged itself before being consumed and the content, including WEB-INF/lib entries will be overlayed.</li>
- * <li><b>Self Overlay</b> : A self overlay is used to re-apply a projects' own content to ensure that it has not been
- * mistakenly replaced by another overlay.</li>
- * <li><b>Web Content Overlay (for war-overlay types)</b> : A reference to another project where only content will be
- * consumed. Dependent libraries will be contained on the classpath and hence will not need to be copied as part of the
- * overlay.</li>
- * <ul>
- * <p>
- * This implementation will use a {@link FlatVirtualComponent} to extract {@link IFlatResource}s before adapting them
- * back into {@link IVirtualResource}s.
+ * component can be used to support the following types of overlay: <ul> <li><b>Standard Overlay</b> : A reference to
+ * another project that will be completely consumed. The referenced project will be packaged itself before being
+ * consumed and the content, including WEB-INF/lib entries will be overlayed.</li> <li><b>Self Overlay</b> : A self
+ * overlay is used to re-apply a projects' own content to ensure that it has not been mistakenly replaced by another
+ * overlay.</li> <li><b>Web Content Overlay (for war-overlay types)</b> : A reference to another project where only
+ * content will be consumed. Dependent libraries will be contained on the classpath and hence will not need to be copied
+ * as part of the overlay.</li> <ul> <p> This implementation will use a {@link FlatVirtualComponent} to extract
+ * {@link IFlatResource}s before adapting them back into {@link IVirtualResource}s.
  * 
  * @see OverlayFilter
  */
@@ -63,10 +59,11 @@ public class ProjectOverlayVirtualComponent extends VirtualComponent implements 
 
 	private FlatVirtualComponentVirtualFolder getUnfilteredRootFolder() {
 		IVirtualComponent overlayComponent = ComponentCore.createComponent(overlayProject);
-		if(overlayComponent == null) {
+		if (overlayComponent == null) {
 			return null;
 		}
-		FlatVirtualComponent flatVirtualComponent = new FlatVirtualComponent(overlayComponent, getFlatComponentDataModel());
+		FlatVirtualComponent flatVirtualComponent = new FlatVirtualComponent(overlayComponent,
+				getFlatComponentDataModel());
 		return new FlatVirtualComponentVirtualFolder(flatVirtualComponent);
 	}
 
@@ -77,24 +74,23 @@ public class ProjectOverlayVirtualComponent extends VirtualComponent implements 
 	}
 
 	private List<IFlattenParticipant> getFlattenParticipants() {
-		return Arrays.<IFlattenParticipant> asList(
-				new SingleRootExportParticipant(new JavaEESingleRootCallback()),
-				new JEEHeirarchyExportParticipant(), 
-				new AddClasspathLibReferencesParticipant(),
-				new AddClasspathFoldersParticipant(), 
-				new AddMappedOutputFoldersParticipant(),
+		return Arrays.<IFlattenParticipant> asList(new SingleRootExportParticipant(new JavaEESingleRootCallback()),
+				new JEEHeirarchyExportParticipant(), new AddClasspathLibReferencesParticipant(),
+				new AddClasspathFoldersParticipant(), new AddMappedOutputFoldersParticipant(),
 				new IgnoreJavaInSourceFolderParticipant());
 	}
 
 	@Override
 	public IVirtualReference[] getReferences(Map<String, Object> options) {
 		try {
-			return getUnfilteredRootFolder().getReferences();
+			Set<IVirtualReference> references = getUnfilteredRootFolder().getReferences();
+			Set<IVirtualReference> filteredReferences = overlayFilter.apply(references);
+			return filteredReferences.toArray(new IVirtualReference[filteredReferences.size()]);
 		} catch (CoreException e) {
 			throw new RuntimeException(e);
 		}
 	}
-	
+
 	public void setInclusions(Set<String> inclusions) {
 		overlayFilter.setInclusions(inclusions);
 	}
@@ -109,5 +105,31 @@ public class ProjectOverlayVirtualComponent extends VirtualComponent implements 
 
 	public Set<String> getExclusions() {
 		return overlayFilter.getExclusions();
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (!super.equals(obj))
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		ProjectOverlayVirtualComponent other = (ProjectOverlayVirtualComponent) obj;
+		if (!super.equals(obj)) {
+			return false;
+		}
+		if (!overlayFilter.equals(other.overlayFilter)) {
+			return false;
+		}
+		return true;
+	}
+	
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = super.hashCode();
+		result = prime * result + overlayFilter.hashCode();
+		return result;
 	}
 }

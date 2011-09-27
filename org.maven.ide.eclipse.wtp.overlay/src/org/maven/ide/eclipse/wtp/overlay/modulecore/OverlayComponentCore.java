@@ -13,7 +13,6 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.OverlaySelfComponent;
 import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.OverlayVirtualArchiveComponent;
-import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.OverlayVirtualComponent;
 import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.v2.ProjectOverlayVirtualComponent;
 
 /**

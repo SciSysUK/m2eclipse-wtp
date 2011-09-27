@@ -2,6 +2,7 @@ package org.maven.ide.eclipse.wtp.overlay.internal.modulecore.v2;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -88,10 +89,11 @@ public class FlatVirtualComponentVirtualFolder extends PartialReadOnlyVirtualFol
 	private IPath getResourcePath(IFlatResource flatResource) {
 		return flatResource.getModuleRelativePath().append(flatResource.getName());
 	}
-	public IVirtualReference[] getReferences() throws CoreException {
+	
+	public Set<IVirtualReference> getReferences() throws CoreException {
 		Set<IVirtualReference> virtualReferences = new LinkedHashSet<IVirtualReference>();
 		collectVirtualReferences(virtualReferences, flatVirtualComponent.fetchResources());
-		return virtualReferences.toArray(new IVirtualReference [virtualReferences.size()]);
+		return Collections.unmodifiableSet(virtualReferences);
 	}
 	
 	private void collectVirtualReferences(Set<IVirtualReference> virtualReferences, IFlatResource[] flatResources) {
