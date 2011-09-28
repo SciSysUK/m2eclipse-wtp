@@ -23,6 +23,9 @@ public class AntPathFilter implements IPathFilter {
 	}
 	
 	private boolean isFiltered(String path) {
+		if (path.startsWith("/")) {
+			path = path.substring(1);
+		}
 		boolean included = isIncluded(path);
 		boolean excluded = isExcluded(path);
 		return !included || excluded;
@@ -49,5 +52,5 @@ public class AntPathFilter implements IPathFilter {
 		}
 		return false;
 	}
-
+	
 }

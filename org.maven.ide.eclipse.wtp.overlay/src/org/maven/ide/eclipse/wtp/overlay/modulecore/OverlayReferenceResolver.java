@@ -25,9 +25,8 @@ import org.eclipse.wst.common.componentcore.internal.ReferencedComponent;
 import org.eclipse.wst.common.componentcore.resolvers.IReferenceResolver;
 import org.eclipse.wst.common.componentcore.resources.IVirtualComponent;
 import org.eclipse.wst.common.componentcore.resources.IVirtualReference;
-import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.OverlaySelfComponent;
-import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.OverlayVirtualArchiveComponent;
-import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.OverlayVirtualComponent;
+import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.v1.OverlaySelfComponent;
+import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.v2.ArchiveOverlayVirtualComponent;
 
 /**
  * Overlay Reference Resolver
@@ -58,7 +57,7 @@ public class OverlayReferenceResolver implements IReferenceResolver {
 
   public IVirtualReference resolve(IVirtualComponent component, ReferencedComponent referencedComponent) {
 	String type = referencedComponent.getHandle().segment(1); 
-    IOverlayVirtualComponent comp = null;
+    IVirtualComponent comp = null;
 	String url = referencedComponent.getHandle().toString();
 	Map<String, String> parameters = ModuleURIUtil.parseUri(url);
 	
@@ -86,8 +85,11 @@ public class OverlayReferenceResolver implements IReferenceResolver {
 		throw new IllegalArgumentException(referencedComponent.getHandle() + " could not be resolved");
 	}
 	
-	comp.setInclusions(getPatternSet(parameters.get(INCLUDES)));
-	comp.setExclusions(getPatternSet(parameters.get(EXCLUDES)));
+	if(comp instanceof IOverlayVirtualComponent) {
+		IOverlayVirtualComponent overlayComponent = (IOverlayVirtualComponent) comp;
+		overlayComponent.setInclusions(getPatternSet(parameters.get(INCLUDES)));
+		overlayComponent.setExclusions(getPatternSet(parameters.get(EXCLUDES)));
+	}
 
 	IVirtualReference ref = ComponentCore.createReference(component, comp);
     ref.setArchiveName(referencedComponent.getArchiveName());
@@ -107,15 +109,12 @@ public class OverlayReferenceResolver implements IReferenceResolver {
 	return patternSet;
   }
 
-  private IOverlayVirtualComponent createSelfComponent(IVirtualComponent component) {
-	  return new OverlaySelfComponent(component.getProject());
+  private IVirtualComponent createSelfComponent(IVirtualComponent component) {
+	  return OverlayComponentCore.createSelfOverlayComponent(component.getProject());
   }
 
   private IOverlayVirtualComponent createArchivecomponent(IVirtualComponent component, String url, String targetPath, IPath runtimePath) {
-  	return new OverlayVirtualArchiveComponent(component.getProject(), 
-  			url, 
-  			component.getProject().getFolder(targetPath).getProjectRelativePath(), 
-  			runtimePath);
+  	return OverlayComponentCore.createOverlayArchiveComponent(component.getProject(), url, component.getProject().getFolder(targetPath).getProjectRelativePath(), runtimePath);
   }
 
   private IOverlayVirtualComponent createProjectComponent(IVirtualComponent component, String name) {
@@ -143,10 +142,10 @@ public class OverlayReferenceResolver implements IReferenceResolver {
       rc.setRuntimePath(reference.getRuntimePath());
       URI handle;
       Map<String, String> parameters = new LinkedHashMap<String, String>(3);
-      if (comp instanceof OverlayVirtualArchiveComponent) {
-    	  OverlayVirtualArchiveComponent archivecomp = (OverlayVirtualArchiveComponent) comp;
+      if (comp instanceof ArchiveOverlayVirtualComponent) {
+    	  ArchiveOverlayVirtualComponent archivecomp = (ArchiveOverlayVirtualComponent) comp;
     	  handle = URI.createURI(VAR_ARCHIVE_PROTOCOL+archivecomp.getArchivePath().toPortableString());
-    	  parameters.put(UNPACK_FOLDER, archivecomp.getUnpackFolderPath().toPortableString());
+    	  parameters.put(UNPACK_FOLDER, archivecomp.getUnpackDirPath().toPortableString());
       } else {
     	  IProject p = comp.getProject();
     	  if (p.equals(reference.getEnclosingComponent().getProject())) {

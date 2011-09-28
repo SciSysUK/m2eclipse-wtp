@@ -20,6 +20,7 @@ import org.eclipse.wst.common.componentcore.internal.flat.IFlatResource;
 import org.eclipse.wst.common.componentcore.internal.resources.VirtualArchiveComponent;
 import org.eclipse.wst.common.componentcore.internal.resources.VirtualFile;
 import org.eclipse.wst.common.componentcore.internal.resources.VirtualFolder;
+import org.eclipse.wst.common.componentcore.resources.IVirtualComponent;
 import org.eclipse.wst.common.componentcore.resources.IVirtualFile;
 import org.eclipse.wst.common.componentcore.resources.IVirtualFolder;
 import org.eclipse.wst.common.componentcore.resources.IVirtualReference;
@@ -35,6 +36,10 @@ public class FlatVirtualComponentVirtualFolder extends PartialReadOnlyVirtualFol
 			throw new IllegalArgumentException("flatVirtualComponent must not be null");
 		}
 		this.flatVirtualComponent = flatVirtualComponent;
+	}
+
+	public IPath getRuntimePath() {
+		return IVirtualComponent.ROOT;
 	}
 
 	public IProject getProject() {

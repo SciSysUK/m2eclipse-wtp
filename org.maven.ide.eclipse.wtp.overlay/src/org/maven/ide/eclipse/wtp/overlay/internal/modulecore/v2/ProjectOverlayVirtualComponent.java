@@ -24,7 +24,6 @@ import org.eclipse.wst.common.componentcore.resources.IVirtualComponent;
 import org.eclipse.wst.common.componentcore.resources.IVirtualFolder;
 import org.eclipse.wst.common.componentcore.resources.IVirtualReference;
 import org.eclipse.wst.common.componentcore.resources.IVirtualResource;
-import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.OverlayVirtualComponent;
 import org.maven.ide.eclipse.wtp.overlay.modulecore.IOverlayVirtualComponent;
 
 /**

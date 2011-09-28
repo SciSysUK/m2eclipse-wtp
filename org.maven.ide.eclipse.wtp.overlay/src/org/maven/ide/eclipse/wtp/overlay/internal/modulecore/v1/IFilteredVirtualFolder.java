@@ -1,4 +1,4 @@
-package org.maven.ide.eclipse.wtp.overlay.internal.modulecore;
+package org.maven.ide.eclipse.wtp.overlay.internal.modulecore.v1;
 
 import org.eclipse.wst.common.componentcore.resources.IVirtualFolder;
 

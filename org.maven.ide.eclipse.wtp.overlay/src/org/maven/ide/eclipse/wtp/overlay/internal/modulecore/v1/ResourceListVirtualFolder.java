@@ -8,7 +8,7 @@
  * Contributors: 
  * Red Hat, Inc. - initial API and implementation 
  ******************************************************************************/ 
-package org.maven.ide.eclipse.wtp.overlay.internal.modulecore;
+package org.maven.ide.eclipse.wtp.overlay.internal.modulecore.v1;
 
 import java.util.ArrayList;
 import java.util.Arrays;

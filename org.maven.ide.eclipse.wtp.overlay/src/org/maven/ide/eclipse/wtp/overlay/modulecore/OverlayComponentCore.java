@@ -9,11 +9,12 @@
 package org.maven.ide.eclipse.wtp.overlay.modulecore;
 
 import org.eclipse.core.resources.IProject;
-import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
-import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.OverlaySelfComponent;
-import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.OverlayVirtualArchiveComponent;
+import org.eclipse.wst.common.componentcore.resources.IVirtualComponent;
+import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.v1.OverlaySelfComponent;
+import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.v2.ArchiveOverlayVirtualComponent;
 import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.v2.ProjectOverlayVirtualComponent;
+import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.v2.CurrentProjectOverlayVictualComponent;
 
 /**
  * Overlay Component Core
@@ -27,12 +28,12 @@ public class OverlayComponentCore {
 	}
 
 	//TODO check and prevent circular references
-	public static IOverlayVirtualComponent createSelfOverlayComponent(IProject aProject) {
-		return new OverlaySelfComponent(aProject);
+	public static IVirtualComponent createSelfOverlayComponent(IProject aProject) {
+		return new CurrentProjectOverlayVictualComponent(aProject);
 	}
 
-	public static IOverlayVirtualComponent createOverlayArchiveComponent(IProject aComponentProject, String archiveLocation, IPath unpackDirPath, IPath aRuntimePath) throws CoreException {
-		final OverlayVirtualArchiveComponent component = new OverlayVirtualArchiveComponent(aComponentProject, archiveLocation, unpackDirPath, aRuntimePath);
-		return component;
+	public static IOverlayVirtualComponent createOverlayArchiveComponent(IProject aComponentProject, String archiveLocation, IPath unpackDirPath, IPath aRuntimePath) {
+		return new ArchiveOverlayVirtualComponent(aComponentProject, archiveLocation, aRuntimePath, unpackDirPath);
 	}
+	
 }

@@ -2,7 +2,6 @@ package org.maven.ide.eclipse.wtp;
 
 import java.util.List;
 
-import org.codehaus.plexus.interpolation.PrefixedObjectValueSource;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.m2e.core.project.ResolverConfiguration;
@@ -13,9 +12,9 @@ import org.eclipse.wst.server.core.IServer;
 import org.eclipse.wst.server.core.model.IModuleResource;
 import org.junit.Test;
 import org.maven.ide.eclipse.wtp.common.tests.TestServerUtil;
-import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.OverlaySelfComponent;
-import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.OverlayVirtualArchiveComponent;
-import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.OverlayVirtualComponent;
+import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.v1.OverlaySelfComponent;
+import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.v2.ArchiveOverlayVirtualComponent;
+import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.v2.CurrentProjectOverlayVictualComponent;
 import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.v2.ProjectOverlayVirtualComponent;
 
 public class OverlayTest extends AbstractWTPTestCase {
@@ -31,10 +30,9 @@ public class OverlayTest extends AbstractWTPTestCase {
       
       IVirtualReference[] references = comp.getReferences();
       
-      assertEquals(2, references.length);
+      assertEquals(1, references.length);
       
-      assertEquals(OverlayVirtualArchiveComponent.class, references[0].getReferencedComponent().getClass());
-      assertEquals(OverlaySelfComponent.class, references[1].getReferencedComponent().getClass());
+      assertEquals(ArchiveOverlayVirtualComponent.class, references[0].getReferencedComponent().getClass());
       
       IServer server = TestServerUtil.createPreviewServer();
       TestServerUtil.addProjectToServer(war, server);
@@ -65,10 +63,9 @@ public class OverlayTest extends AbstractWTPTestCase {
       
       IVirtualReference[] references = comp.getReferences();
       
-      assertEquals(2, references.length);
+      assertEquals(1, references.length);
       
       assertEquals(ProjectOverlayVirtualComponent.class, references[0].getReferencedComponent().getClass());
-      assertEquals(OverlaySelfComponent.class, references[1].getReferencedComponent().getClass());
       
       IServer server = TestServerUtil.createPreviewServer();
       TestServerUtil.addProjectToServer(war, server);
@@ -203,8 +200,8 @@ public class OverlayTest extends AbstractWTPTestCase {
       
       assertEquals(2, references.length);
       
-      assertEquals(OverlayVirtualArchiveComponent.class, references[0].getReferencedComponent().getClass());
-      assertEquals(OverlaySelfComponent.class, references[1].getReferencedComponent().getClass());
+      assertEquals(ArchiveOverlayVirtualComponent.class, references[0].getReferencedComponent().getClass());
+      assertEquals(CurrentProjectOverlayVictualComponent.class, references[1].getReferencedComponent().getClass());
       
       IServer server = TestServerUtil.createPreviewServer();
       TestServerUtil.addProjectToServer(war, server);
