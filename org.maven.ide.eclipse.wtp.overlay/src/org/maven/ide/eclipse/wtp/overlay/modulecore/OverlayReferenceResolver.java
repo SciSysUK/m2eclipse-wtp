@@ -57,7 +57,7 @@ public class OverlayReferenceResolver implements IReferenceResolver {
 
   public IVirtualReference resolve(IVirtualComponent component, ReferencedComponent referencedComponent) {
 	String type = referencedComponent.getHandle().segment(1); 
-    IVirtualComponent comp = null;
+	IOverlayVirtualComponent overlayComponent = null;
 	String url = referencedComponent.getHandle().toString();
 	Map<String, String> parameters = ModuleURIUtil.parseUri(url);
 	
@@ -67,31 +67,28 @@ public class OverlayReferenceResolver implements IReferenceResolver {
 	}
 	
 	if ("prj".equals(type)) {
-		comp = createProjectComponent(component, moduleName.substring(PROJECT_PROTOCOL.length()));
+		overlayComponent = createProjectComponent(component, moduleName.substring(PROJECT_PROTOCOL.length()));
 	} else if ("var".equals(type)) {
 		String unpackFolder = parameters.get(UNPACK_FOLDER);
 		if (unpackFolder == null || unpackFolder.trim().length() == 0) {
 			throw new IllegalArgumentException(url + " is missing the "+UNPACK_FOLDER+" parameter");
 		}
-		comp = createArchivecomponent(component, 
+		overlayComponent = createArchivecomponent(component, 
 									  moduleName.substring(PROTOCOL.length()), 
 									  unpackFolder, 
 									  referencedComponent.getRuntimePath());
 		
 	} else if ("slf".equals(type)){
-		comp = createSelfComponent(component);
+		overlayComponent = createSelfComponent(component);
 	}
-	if (comp == null) {
+	if (overlayComponent == null) {
 		throw new IllegalArgumentException(referencedComponent.getHandle() + " could not be resolved");
 	}
 	
-	if(comp instanceof IOverlayVirtualComponent) {
-		IOverlayVirtualComponent overlayComponent = (IOverlayVirtualComponent) comp;
-		overlayComponent.setInclusions(getPatternSet(parameters.get(INCLUDES)));
-		overlayComponent.setExclusions(getPatternSet(parameters.get(EXCLUDES)));
-	}
+	overlayComponent.setInclusions(getPatternSet(parameters.get(INCLUDES)));
+	overlayComponent.setExclusions(getPatternSet(parameters.get(EXCLUDES)));
 
-	IVirtualReference ref = ComponentCore.createReference(component, comp);
+	IVirtualReference ref = ComponentCore.createReference(component, overlayComponent);
     ref.setArchiveName(referencedComponent.getArchiveName());
     ref.setRuntimePath(referencedComponent.getRuntimePath());
     ref.setDependencyType(referencedComponent.getDependencyType().getValue());
@@ -109,7 +106,7 @@ public class OverlayReferenceResolver implements IReferenceResolver {
 	return patternSet;
   }
 
-  private IVirtualComponent createSelfComponent(IVirtualComponent component) {
+  private IOverlayVirtualComponent createSelfComponent(IVirtualComponent component) {
 	  return OverlayComponentCore.createSelfOverlayComponent(component.getProject());
   }
 

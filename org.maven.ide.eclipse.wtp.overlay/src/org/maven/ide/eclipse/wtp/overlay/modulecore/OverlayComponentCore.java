@@ -28,7 +28,7 @@ public class OverlayComponentCore {
 	}
 
 	//TODO check and prevent circular references
-	public static IVirtualComponent createSelfOverlayComponent(IProject aProject) {
+	public static IOverlayVirtualComponent createSelfOverlayComponent(IProject aProject) {
 		return new CurrentProjectOverlayVictualComponent(aProject);
 	}
 

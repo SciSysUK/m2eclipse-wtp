@@ -368,7 +368,8 @@ class WebProjectConfiguratorDelegate extends AbstractProjectConfiguratorDelegate
       boolean isDeployed = (Artifact.SCOPE_COMPILE.equals(scope) || Artifact.SCOPE_RUNTIME.equals(scope)) 
     		  				&& !descriptor.isOptionalDependency() 
     		  				&& opts.isPackaged(deployedName)
-    		  				&& !isWorkspaceProject(artifact);
+    		  				&& !isWorkspaceProject(artifact)
+    		  				&& !isWarOverlay(artifact);
       
       // add non-dependency attribute if this classpathentry is not meant to be deployed
       // or if it's a workspace project (projects already have a reference created in configure())
@@ -406,6 +407,9 @@ class WebProjectConfiguratorDelegate extends AbstractProjectConfiguratorDelegate
     }
   }
 
+  private boolean isWarOverlay(Artifact artifact) {
+    return "war-overlay".equals(artifact.getType());
+  }
 
   private IPath renameArtifact(String targetDir, IPath source, String newName) {
     File src = new File(source.toOSString());

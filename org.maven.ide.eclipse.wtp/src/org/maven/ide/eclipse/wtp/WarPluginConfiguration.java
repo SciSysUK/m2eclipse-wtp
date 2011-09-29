@@ -14,11 +14,20 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import org.apache.maven.Maven;
+import org.apache.maven.artifact.Artifact;
+import org.apache.maven.artifact.factory.ArtifactFactory;
+import org.apache.maven.artifact.repository.ArtifactRepository;
+import org.apache.maven.artifact.resolver.ArtifactResolver;
 import org.apache.maven.model.Plugin;
+import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.war.Overlay;
 import org.apache.maven.plugin.war.overlay.InvalidOverlayConfigurationException;
 import org.apache.maven.plugin.war.overlay.OverlayManager;
+import org.apache.maven.plugin.war.overlay.WebContentResolver;
 import org.apache.maven.project.MavenProject;
+import org.apache.maven.repository.RepositorySystem;
+import org.codehaus.plexus.component.repository.exception.ComponentLookupException;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
@@ -28,7 +37,10 @@ import org.eclipse.core.runtime.Status;
 import org.eclipse.jst.j2ee.internal.J2EEVersionConstants;
 import org.eclipse.jst.j2ee.web.project.facet.WebFacetUtils;
 import org.eclipse.jst.jee.util.internal.JavaEEQuickPeek;
+import org.eclipse.m2e.core.MavenPlugin;
 import org.eclipse.m2e.core.internal.IMavenConstants;
+import org.eclipse.m2e.core.internal.MavenPluginActivator;
+import org.eclipse.m2e.core.internal.embedder.MavenImpl;
 import org.eclipse.wst.common.project.facet.core.IProjectFacetVersion;
 import org.maven.ide.eclipse.wtp.internal.StringUtils;
 import org.maven.ide.eclipse.wtp.namemapping.FileNameMapping;
@@ -52,14 +64,14 @@ public class WarPluginConfiguration extends AbstractFilteringSupportMavenPlugin 
   private static final int WEB_3_0_ID = 30;//Same Value as J2EEVersionConstants.WEB_3_0_ID from WTP 3.2 (org.eclipse.jst.j2ee.core_1.2.0.vX.jar)
 
   private IProject project;
-  
+
   private MavenProject mavenProject;
 
   public WarPluginConfiguration(MavenProject mavenProject, IProject project) {
     Plugin plugin = mavenProject.getPlugin("org.apache.maven.plugins:maven-war-plugin");
     this.project = project;
     this.mavenProject = mavenProject;
-    setConfiguration((Xpp3Dom)plugin.getConfiguration());
+    setConfiguration((Xpp3Dom) plugin.getConfiguration());
   }
 
   static boolean isWarProject(MavenProject mavenProject) {
@@ -70,15 +82,14 @@ public class WarPluginConfiguration extends AbstractFilteringSupportMavenPlugin 
     Xpp3Dom config = getConfiguration();
     if(config != null) {
       Xpp3Dom webResources = config.getChild("webResources");
-      if (webResources != null && webResources.getChildCount() > 0)
-      {
-        int count = webResources.getChildCount();  
+      if(webResources != null && webResources.getChildCount() > 0) {
+        int count = webResources.getChildCount();
         Xpp3Dom[] resources = new Xpp3Dom[count];
-        for (int i= 0; i< count ; i++) {
+        for(int i = 0; i < count; i++ ) {
           //MECLIPSEWTP-97 support old maven-war-plugin configurations which used <webResource> 
           // instead of <resource>
-          Xpp3Dom webResource = new Xpp3Dom(webResources.getChild(i),"resource"); 
-          
+          Xpp3Dom webResource = new Xpp3Dom(webResources.getChild(i), "resource");
+
           //MECLIPSEWTP-152 : Web resource processing fails when targetPath has a leading /
           Xpp3Dom targetPath = webResource.getChild("targetPath");
           if(targetPath != null && targetPath.getValue().startsWith("/")) {
@@ -116,10 +127,10 @@ public class WarPluginConfiguration extends AbstractFilteringSupportMavenPlugin 
   public String[] getPackagingExcludes() {
     Xpp3Dom config = getConfiguration();
     if(config != null) {
-        Xpp3Dom excl = config.getChild("packagingExcludes");
-        if(excl != null) {
-          return StringUtils.tokenizeToStringArray(excl.getValue(), ",");
-        }
+      Xpp3Dom excl = config.getChild("packagingExcludes");
+      if(excl != null) {
+        return StringUtils.tokenizeToStringArray(excl.getValue(), ",");
+      }
     }
     return new String[0];
   }
@@ -148,7 +159,7 @@ public class WarPluginConfiguration extends AbstractFilteringSupportMavenPlugin 
           }
         }
       }
-  }
+    }
     return false;
   }
 
@@ -162,7 +173,7 @@ public class WarPluginConfiguration extends AbstractFilteringSupportMavenPlugin 
           Xpp3Dom prefix = manifest.getChild("classpathPrefix");
           if(prefix != null && !StringUtils.nullOrEmpty(prefix.getValue())) {
             String rawPrefix = prefix.getValue().trim();
-            if (!rawPrefix.endsWith("/")){
+            if(!rawPrefix.endsWith("/")) {
               rawPrefix += "/";
             }
             return rawPrefix;
@@ -176,7 +187,7 @@ public class WarPluginConfiguration extends AbstractFilteringSupportMavenPlugin 
   public IProjectFacetVersion getWebFacetVersion(IProject project) {
     IFile webXml;
     String customWebXml = getCustomWebXml(project);
-    if (customWebXml == null) {
+    if(customWebXml == null) {
       webXml = project.getFolder(getWarSourceDirectory()).getFile(WEB_XML);
     } else {
       webXml = project.getFile(customWebXml);
@@ -196,7 +207,7 @@ public class WarPluginConfiguration extends AbstractFilteringSupportMavenPlugin 
               return WebFacetUtils.WEB_24;
             case J2EEVersionConstants.WEB_2_5_ID:
               return WebFacetUtils.WEB_FACET.getVersion("2.5");
-            //MNGECLIPSE-1978  
+              //MNGECLIPSE-1978  
             case WEB_3_0_ID://JavaEEQuickPeek will return this value only if WTP version >= 3.2
               return WebFacetUtils.WEB_FACET.getVersion("3.0");//only exists in WTP version >= 3.2
           }
@@ -209,20 +220,23 @@ public class WarPluginConfiguration extends AbstractFilteringSupportMavenPlugin 
         // expected
       }
     }
-   
+
     //MNGECLIPSE-1978 If no web.xml found and the project depends on some java EE 6 jar and WTP >= 3.2, then set web facet to 3.0
-    if (WTPProjectsUtil.isJavaEE6Available() && WTPProjectsUtil.hasInClassPath(project, "javax.servlet.annotation.WebServlet")) {
+    if(WTPProjectsUtil.isJavaEE6Available()
+        && WTPProjectsUtil.hasInClassPath(project, "javax.servlet.annotation.WebServlet")) {
       return WebFacetUtils.WEB_FACET.getVersion("3.0");
     }
-    
+
     //MNGECLIPSE-984 web.xml is optional for 2.5 Web Projects
     return WTPProjectsUtil.DEFAULT_WEB_FACET;
     //We don't want to prevent the project creation when the java compiler level is < 5, we coud try that instead :
     //IProjectFacetVersion javaFv = JavaFacetUtils.compilerLevelToFacet(JavaFacetUtils.getCompilerLevel(project));
     //return (JavaFacetUtils.JAVA_50.compareTo(javaFv) > 0)?WebFacetUtils.WEB_24:WebFacetUtils.WEB_25; 
   }
+
   /**
    * Get the custom location of web.xml, as set in &lt;webXml&gt;.
+   * 
    * @return the custom location of web.xml or null if &lt;webXml&gt; is not set
    */
   public String getCustomWebXml(IProject project) {
@@ -240,9 +254,10 @@ public class WarPluginConfiguration extends AbstractFilteringSupportMavenPlugin 
 
   /**
    * @return
-   * @throws CoreException 
+   * @throws CoreException
+   * @throws MojoExecutionException 
    */
-  public List<Overlay> getOverlays() throws CoreException {
+  public List<Overlay> getOverlays() throws CoreException, MojoExecutionException {
     Overlay currentProjectOverlay = Overlay.createInstance();
     currentProjectOverlay.setArtifact(mavenProject.getArtifact());
     OverlayManager overlayManager = null;
@@ -252,7 +267,8 @@ public class WarPluginConfiguration extends AbstractFilteringSupportMavenPlugin 
                                                          mavenProject, 
                                                          getDependentWarIncludes(),
                                                          getDependentWarExcludes(), 
-                                                         currentProjectOverlay);
+                                                         currentProjectOverlay,
+                                                         new M2EWebContentResolver());
       overlays = overlayManager.getOverlays();
     } catch(InvalidOverlayConfigurationException ex) {
       throw new CoreException(new Status(IStatus.ERROR, IMavenConstants.PLUGIN_ID, ex.getMessage(),ex));
@@ -260,7 +276,7 @@ public class WarPluginConfiguration extends AbstractFilteringSupportMavenPlugin 
     
     return overlays;
   }
-  
+
   public String getDependentWarIncludes() {
     return DomUtils.getChildValue(getConfiguration(), "dependentWarIncludes", "**/**");
   }
@@ -269,14 +285,13 @@ public class WarPluginConfiguration extends AbstractFilteringSupportMavenPlugin 
     return DomUtils.getChildValue(getConfiguration(), "dependentWarExcludes", "META-INF/MANIFEST.MF");
   }
 
-  
   public List<Overlay> getConfiguredOverlays() {
     Xpp3Dom config = getConfiguration();
     if(config != null) {
       Xpp3Dom overlaysNode = config.getChild("overlays");
-      if (overlaysNode != null && overlaysNode.getChildCount() > 0) {
+      if(overlaysNode != null && overlaysNode.getChildCount() > 0) {
         List<Overlay> overlays = new ArrayList<Overlay>(overlaysNode.getChildCount());
-        for (Xpp3Dom overlayNode : overlaysNode.getChildren("overlay")) {
+        for(Xpp3Dom overlayNode : overlaysNode.getChildren("overlay")) {
           overlays.add(parseOverlay(overlayNode));
         }
         return overlays;
@@ -284,7 +299,7 @@ public class WarPluginConfiguration extends AbstractFilteringSupportMavenPlugin 
     }
     return Collections.emptyList();
   }
-  
+
   /**
    * @param overlayNode
    * @return
@@ -304,12 +319,12 @@ public class WarPluginConfiguration extends AbstractFilteringSupportMavenPlugin 
     overlay.setArtifactId(artifactId);
     overlay.setGroupId(groupId);
     overlay.setClassifier(classifier);
-    if (exclusions== null || exclusions.length ==0) {
+    if(exclusions == null || exclusions.length == 0) {
       overlay.setExcludes(getDependentWarExcludes());
     } else {
       overlay.setExcludes(exclusions);
     }
-    if (inclusions== null || inclusions.length ==0) {
+    if(inclusions == null || inclusions.length == 0) {
       overlay.setIncludes(getDependentWarIncludes());
     } else {
       overlay.setIncludes(inclusions);
@@ -318,7 +333,7 @@ public class WarPluginConfiguration extends AbstractFilteringSupportMavenPlugin 
     overlay.setSkip(skip);
     overlay.setTargetPath(targetPath);
     overlay.setType(type);
-    
+
     return overlay;
   }
 
@@ -328,13 +343,13 @@ public class WarPluginConfiguration extends AbstractFilteringSupportMavenPlugin 
    */
   private String[] getChildrenAsStringArray(Xpp3Dom root, String childName) {
     String[] values = null;
-    if (root != null) {
-      Xpp3Dom[] children = root.getChildren(childName); 
-      if (children != null) {
+    if(root != null) {
+      Xpp3Dom[] children = root.getChildren(childName);
+      if(children != null) {
         values = new String[children.length];
         int i = 0;
-        for (Xpp3Dom child : children) {
-          values[i++] = child.getValue();
+        for(Xpp3Dom child : children) {
+          values[i++ ] = child.getValue();
         }
       }
     }
@@ -349,7 +364,7 @@ public class WarPluginConfiguration extends AbstractFilteringSupportMavenPlugin 
     }
     return new PatternBasedFileNameMapping(expression);
   }
-  
+
   protected String getFilteringAttribute() {
     return "filteringDeploymentDescriptors";
   }

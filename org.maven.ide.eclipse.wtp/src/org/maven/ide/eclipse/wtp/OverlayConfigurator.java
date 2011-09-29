@@ -16,6 +16,7 @@ import java.util.Set;
 
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.plugin.MojoExecution;
+import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.war.Overlay;
 import org.apache.maven.project.MavenProject;
 import org.eclipse.core.resources.IProject;
@@ -40,24 +41,39 @@ import org.maven.ide.eclipse.wtp.internal.StringUtils;
 import org.maven.ide.eclipse.wtp.overlay.modulecore.IOverlayVirtualComponent;
 import org.maven.ide.eclipse.wtp.overlay.modulecore.OverlayComponentCore;
 
+
 /**
  * OverlayConfigurator
- *
+ * 
  * @author Fred Bricon
  */
 public class OverlayConfigurator extends WTPProjectConfigurator {
 
   @Override
-  public void configure(ProjectConfigurationRequest request, IProgressMonitor monitor)
+  public void configureClasspath(IMavenProjectFacade facade, IClasspathDescriptor classpath, IProgressMonitor monitor)
       throws CoreException {
   }
 
   @Override
+  public AbstractBuildParticipant getBuildParticipant(IMavenProjectFacade projectFacade, MojoExecution execution,
+      IPluginExecutionMetadata executionMetadata) {
+    return null;
+  }
+
+  @Override
+  public void configure(ProjectConfigurationRequest request, IProgressMonitor monitor) throws CoreException {
+  }
+
+  @Override
+  @SuppressWarnings("restriction")
   public void mavenProjectChanged(MavenProjectChangedEvent event, IProgressMonitor monitor) throws CoreException {
     IMavenProjectFacade facade = event.getMavenProject();
-    if(facade == null) { return; }
+    if(facade == null) {
+      return;
+    }
+
     IProject project = facade.getProject();
-    if (project.getResourceAttributes().isReadOnly()){
+    if(project.getResourceAttributes().isReadOnly()) {
       return;
     }
 
@@ -71,122 +87,127 @@ public class OverlayConfigurator extends WTPProjectConfigurator {
       markerManager.deleteMarkers(facade.getPom(), MavenWtpConstants.WTP_MARKER_OVERLAY_ERROR);
       setModuleDependencies(project, mavenProject, monitor);
     } catch(Exception ex) {
-      markerManager.addErrorMarkers(facade.getPom(), MavenWtpConstants.WTP_MARKER_OVERLAY_ERROR,ex);
+      markerManager.addErrorMarkers(facade.getPom(), MavenWtpConstants.WTP_MARKER_OVERLAY_ERROR, ex);
     }
-    
   }
 
-  /**
-   * @param project
-   * @param mavenProject
-   * @param monitor
-   * @throws CoreException 
-   */
-  private void setModuleDependencies(IProject project, MavenProject mavenProject, IProgressMonitor monitor) throws CoreException {
-
-    IVirtualComponent warComponent = ComponentCore.createComponent(project);
-    if (warComponent == null) {
+  private void setModuleDependencies(IProject project, MavenProject mavenProject, IProgressMonitor monitor)
+      throws CoreException {
+    IVirtualComponent virtualComponent = ComponentCore.createComponent(project);
+    if(virtualComponent == null) {
       return;
     }
-    
-    Set<IVirtualReference> newOverlayRefs = new LinkedHashSet<IVirtualReference>();
+
     MavenSessionHelper helper = new MavenSessionHelper(mavenProject);
     try {
+      
       helper.ensureDependenciesAreResolved("maven-war-plugin", "war:war");
       
-      MavenPlugin.getMaven();
-      
-    WarPluginConfiguration config = new WarPluginConfiguration(mavenProject, project);
-    
-    List<Overlay> overlays = config.getOverlays();
-    //1 overlay = current project => no overlay component needed
-    if (overlays.size() > 1) {
-
-      //Component order must be inverted to follow maven's overlay order behaviour 
-      //as in WTP, last components supersede the previous ones
-      Collections.reverse(overlays);
+      List<Overlay> overlays = getOverlaysToConvertToReferences(project, mavenProject);
+      Set<IVirtualReference> references = new LinkedHashSet<IVirtualReference>();
       for(Overlay overlay : overlays) {
-
-        if (overlay.shouldSkip()) {
-          continue;
-        }
-        
-        Artifact artifact = overlay.getArtifact();
-        IOverlayVirtualComponent overlayComponent = null;
-        IMavenProjectFacade workspaceDependency = projectManager.getMavenProject(
-            artifact.getGroupId(), 
-            artifact.getArtifactId(),
-            artifact.getVersion());
-
-        if(workspaceDependency != null) {
-          //artifact dependency is a workspace project
-          IProject overlayProject = workspaceDependency.getProject();
-
-          if (overlayProject.equals(project)) {
-            overlayComponent = OverlayComponentCore.createSelfOverlayComponent(project);
-          } else {
-            overlayComponent = OverlayComponentCore.createOverlayComponent(overlayProject);
-          }
-        } else {
-          overlayComponent = createOverlayArchiveComponent(project, mavenProject, overlay);
-        }
-
-        if (overlayComponent != null) {
-          
-          overlayComponent.setInclusions(new LinkedHashSet<String>(Arrays.asList(overlay.getIncludes())));
-          overlayComponent.setExclusions(new LinkedHashSet<String>(Arrays.asList(overlay.getExcludes())));
-          
-          IVirtualReference depRef = ComponentCore.createReference(warComponent, overlayComponent);
-          String targetPath = StringUtils.nullOrEmpty(overlay.getTargetPath())?"/":overlay.getTargetPath();
-          depRef.setRuntimePath(new Path(targetPath));
-          newOverlayRefs.add(depRef);
+        IVirtualComponent overlayComponent = getOverlayAsVirtualComponent(project, mavenProject, overlay);
+        if(overlayComponent != null) {
+          IVirtualReference reference = ComponentCore.createReference(virtualComponent, overlayComponent);
+          reference.setRuntimePath(getTargetPath(overlay));
+          references.add(reference);
         }
       }
-      
-    }
-    
-    IVirtualReference[] oldOverlayRefs = WTPProjectsUtil.extractHardReferences(warComponent, true);
-    
-    IVirtualReference[] updatedOverlayRefs = newOverlayRefs.toArray(new IVirtualReference[newOverlayRefs.size()]);
-    
-    if (WTPProjectsUtil.hasChanged2(oldOverlayRefs, updatedOverlayRefs)){
-      //Only write in the .component file if necessary 
-      IVirtualReference[] nonOverlayRefs = WTPProjectsUtil.extractHardReferences(warComponent, false);
-      IVirtualReference[] allRefs = new IVirtualReference[nonOverlayRefs.length + updatedOverlayRefs.length];
-      System.arraycopy(nonOverlayRefs, 0, allRefs, 0, nonOverlayRefs.length);
-      System.arraycopy(updatedOverlayRefs, 0, allRefs, nonOverlayRefs.length, updatedOverlayRefs.length);
-      warComponent.setReferences(allRefs);
-    }
 
+      IVirtualReference[] overlayReferences = references.toArray(new IVirtualReference[references.size()]);
+      if(referencesHaveChanged(virtualComponent, overlayReferences)) {
+        updateReferences(virtualComponent, overlayReferences);
+      }
     } finally {
       helper.dispose();
     }
 
   }
 
-  private IOverlayVirtualComponent createOverlayArchiveComponent(IProject project, MavenProject mavenProject, Overlay overlay) throws CoreException {
-    IPath m2eWtpFolder = ProjectUtils.getM2eclipseWtpFolder(mavenProject, project);
-    IPath unpackDirPath = new Path(m2eWtpFolder.toOSString()+"/overlays");
-    String archiveLocation = ArtifactHelper.getM2REPOVarPath(overlay.getArtifact());
-    String targetPath = StringUtils.nullOrEmpty(overlay.getTargetPath())?"/":overlay.getTargetPath();
-    IOverlayVirtualComponent component = OverlayComponentCore.createOverlayArchiveComponent(
-                                                                project, 
-                                                                archiveLocation, 
-                                                                unpackDirPath, 
-                                                                new Path(targetPath));
-    return component;
-  }
-  
-  
-  public void configureClasspath(IMavenProjectFacade facade, IClasspathDescriptor classpath, IProgressMonitor monitor)
+  private List<Overlay> getOverlaysToConvertToReferences(IProject project, MavenProject mavenProject)
       throws CoreException {
+    try {
+      WarPluginConfiguration warPlugin = new WarPluginConfiguration(mavenProject, project);
+      List<Overlay> overlays = warPlugin.getOverlays();
+
+      // Remove the current project overlay if it is the only item as it will be handled by the WAR component.
+      // If the current project is in list a CurrentProjectOverlayVictualComponent will be created 
+      // to ensure the specified overlay order is respected
+      if(overlays.size() == 1 && overlays.get(0).isCurrentProject()) {
+        overlays.remove(0);
+      }
+      
+      //Component order must be inverted to follow maven's overlay order behaviour 
+      //as in WTP, last components supersede the previous ones
+      Collections.reverse(overlays);
+
+      return overlays;
+    } catch(MojoExecutionException ex) {
+      throw new RuntimeException(ex);
+    }
   }
-  
-  /* (non-Javadoc)
-   * @see org.maven.ide.eclipse.wtp.WTPProjectConfigurator#getBuildParticipant(org.eclipse.m2e.core.project.IMavenProjectFacade, org.apache.maven.plugin.MojoExecution, org.eclipse.m2e.core.lifecyclemapping.model.IPluginExecutionMetadata)
-   */
-  public AbstractBuildParticipant getBuildParticipant(IMavenProjectFacade projectFacade, MojoExecution execution,
-      IPluginExecutionMetadata executionMetadata) {
-    return null;
+
+  private IVirtualComponent getOverlayAsVirtualComponent(IProject project, MavenProject mavenProject, Overlay overlay) {
+
+    if(overlay.shouldSkip()) {
+      return null;
+    }
+    IOverlayVirtualComponent overlayComponent = createOverlayComponent(project, mavenProject, overlay);
+    overlayComponent.setInclusions(new LinkedHashSet<String>(Arrays.asList(overlay.getIncludes())));
+    overlayComponent.setExclusions(new LinkedHashSet<String>(Arrays.asList(overlay.getExcludes())));
+    return overlayComponent;
+  }
+
+  private IOverlayVirtualComponent createOverlayComponent(IProject project, MavenProject mavenProject, Overlay overlay) {
+    IMavenProjectFacade workspaceDependency = getWorkspaceDependency(overlay);
+
+    if(workspaceDependency == null) {
+      return createOverlayArchiveComponent(project, mavenProject, overlay);
+    }
+
+    IProject overlayProject = workspaceDependency.getProject();
+    if(overlayProject != null && overlayProject.equals(project)) {
+      return OverlayComponentCore.createSelfOverlayComponent(overlayProject);
+    }
+    return OverlayComponentCore.createOverlayComponent(overlayProject);
+  }
+
+  private IMavenProjectFacade getWorkspaceDependency(Overlay overlay) {
+    Artifact artifact = overlay.getArtifact();
+    IMavenProjectFacade workspaceDependency = projectManager.getMavenProject(artifact.getGroupId(),
+        artifact.getArtifactId(), artifact.getVersion());
+    return workspaceDependency;
+  }
+
+  private boolean referencesHaveChanged(IVirtualComponent virtualComponent, IVirtualReference[] overlayReferences) {
+    IVirtualReference[] existingOverlayReferences = WTPProjectsUtil.extractHardReferences(virtualComponent, true);
+    return (WTPProjectsUtil.hasChanged2(existingOverlayReferences, overlayReferences));
+  }
+
+  private void updateReferences(IVirtualComponent virtualComponent, IVirtualReference[] overlayReferences) {
+    IVirtualReference[] existingNonOverlayReferences = WTPProjectsUtil.extractHardReferences(virtualComponent, false);
+    IVirtualReference[] updatedReferences = new IVirtualReference[existingNonOverlayReferences.length
+        + overlayReferences.length];
+    System.arraycopy(existingNonOverlayReferences, 0, updatedReferences, 0, existingNonOverlayReferences.length);
+    System.arraycopy(overlayReferences, 0, updatedReferences, existingNonOverlayReferences.length,
+        overlayReferences.length);
+    virtualComponent.setReferences(updatedReferences);
+  }
+
+  private IOverlayVirtualComponent createOverlayArchiveComponent(IProject project, MavenProject mavenProject,
+      Overlay overlay) {
+    IPath m2eWtpFolder = ProjectUtils.getM2eclipseWtpFolder(mavenProject, project);
+    IPath unpackDirPath = new Path(m2eWtpFolder.toOSString() + "/overlays");
+    String archiveLocation = ArtifactHelper.getM2REPOVarPath(overlay.getArtifact());
+    return OverlayComponentCore.createOverlayArchiveComponent(project, archiveLocation, unpackDirPath,
+        getTargetPath(overlay));
+  }
+
+  private IPath getTargetPath(Overlay overlay) {
+    String targetPath = overlay.getTargetPath();
+    if(StringUtils.nullOrEmpty(targetPath)) {
+      targetPath = "/";
+    }
+    return new Path(targetPath);
   }
 }

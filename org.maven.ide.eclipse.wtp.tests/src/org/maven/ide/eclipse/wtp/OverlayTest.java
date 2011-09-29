@@ -12,7 +12,6 @@ import org.eclipse.wst.server.core.IServer;
 import org.eclipse.wst.server.core.model.IModuleResource;
 import org.junit.Test;
 import org.maven.ide.eclipse.wtp.common.tests.TestServerUtil;
-import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.v1.OverlaySelfComponent;
 import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.v2.ArchiveOverlayVirtualComponent;
 import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.v2.CurrentProjectOverlayVictualComponent;
 import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.v2.ProjectOverlayVirtualComponent;
@@ -30,7 +29,7 @@ public class OverlayTest extends AbstractWTPTestCase {
       
       IVirtualReference[] references = comp.getReferences();
       
-      assertEquals(1, references.length);
+      assertEquals(2, references.length);
       
       assertEquals(ArchiveOverlayVirtualComponent.class, references[0].getReferencedComponent().getClass());
       
@@ -63,7 +62,7 @@ public class OverlayTest extends AbstractWTPTestCase {
       
       IVirtualReference[] references = comp.getReferences();
       
-      assertEquals(1, references.length);
+      assertEquals(2, references.length);
       
       assertEquals(ProjectOverlayVirtualComponent.class, references[0].getReferencedComponent().getClass());
       
