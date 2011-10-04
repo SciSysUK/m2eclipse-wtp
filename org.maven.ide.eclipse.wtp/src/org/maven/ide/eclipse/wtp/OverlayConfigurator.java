@@ -25,7 +25,6 @@ import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.jst.j2ee.web.project.facet.WebFacetUtils;
-import org.eclipse.m2e.core.MavenPlugin;
 import org.eclipse.m2e.core.lifecyclemapping.model.IPluginExecutionMetadata;
 import org.eclipse.m2e.core.project.IMavenProjectFacade;
 import org.eclipse.m2e.core.project.MavenProjectChangedEvent;
@@ -43,7 +42,7 @@ import org.maven.ide.eclipse.wtp.overlay.modulecore.OverlayComponentCore;
 
 
 /**
- * OverlayConfigurator
+ * Project configurator that supports WAR overlay projects.
  * 
  * @author Fred Bricon
  */
@@ -85,14 +84,24 @@ public class OverlayConfigurator extends WTPProjectConfigurator {
     MavenProject mavenProject = facade.getMavenProject(monitor);
     try {
       markerManager.deleteMarkers(facade.getPom(), MavenWtpConstants.WTP_MARKER_OVERLAY_ERROR);
-      setModuleDependencies(project, mavenProject, monitor);
+      configureComponentReferences(project, mavenProject, monitor);
     } catch(Exception ex) {
       markerManager.addErrorMarkers(facade.getPom(), MavenWtpConstants.WTP_MARKER_OVERLAY_ERROR, ex);
     }
   }
 
-  private void setModuleDependencies(IProject project, MavenProject mavenProject, IProgressMonitor monitor)
-      throws CoreException {
+  /**
+   * Configure the {@link IVirtualReference references} of the {@link IVirtualComponent} to support overlays.
+   * 
+   * @param project the current WTP project
+   * @param mavenProject the maven project
+   * @param monitor the current monitor
+   * @throws CoreException
+   * @throws MojoExecutionException
+   */
+  private void configureComponentReferences(IProject project, MavenProject mavenProject, IProgressMonitor monitor)
+      throws CoreException, MojoExecutionException {
+
     IVirtualComponent virtualComponent = ComponentCore.createComponent(project);
     if(virtualComponent == null) {
       return;
@@ -100,13 +109,12 @@ public class OverlayConfigurator extends WTPProjectConfigurator {
 
     MavenSessionHelper helper = new MavenSessionHelper(mavenProject);
     try {
-      
       helper.ensureDependenciesAreResolved("maven-war-plugin", "war:war");
-      
+
       List<Overlay> overlays = getOverlaysToConvertToReferences(project, mavenProject);
       Set<IVirtualReference> references = new LinkedHashSet<IVirtualReference>();
       for(Overlay overlay : overlays) {
-        IVirtualComponent overlayComponent = getOverlayAsVirtualComponent(project, mavenProject, overlay);
+        IOverlayVirtualComponent overlayComponent = getOverlayVirtualComponent(project, mavenProject, overlay);
         if(overlayComponent != null) {
           IVirtualReference reference = ComponentCore.createReference(virtualComponent, overlayComponent);
           reference.setRuntimePath(getTargetPath(overlay));
@@ -124,41 +132,49 @@ public class OverlayConfigurator extends WTPProjectConfigurator {
 
   }
 
+  /**
+   * Returns a list of {@link Overlay}s that should be converted to references. Overlays are returned in the correct
+   * order for WTP.
+   * 
+   * @param project the current WTP project
+   * @param mavenProject the maven project
+   * @return a list of overylays
+   * @throws CoreException
+   * @throws MojoExecutionException
+   */
   private List<Overlay> getOverlaysToConvertToReferences(IProject project, MavenProject mavenProject)
-      throws CoreException {
-    try {
-      WarPluginConfiguration warPlugin = new WarPluginConfiguration(mavenProject, project);
-      List<Overlay> overlays = warPlugin.getOverlays();
+      throws CoreException, MojoExecutionException {
+    WarPluginConfiguration warPlugin = new WarPluginConfiguration(mavenProject, project);
+    List<Overlay> overlays = warPlugin.getOverlays();
 
-      // Remove the current project overlay if it is the only item as it will be handled by the WAR component.
-      // If the current project is in list a CurrentProjectOverlayVictualComponent will be created 
-      // to ensure the specified overlay order is respected
-      if(overlays.size() == 1 && overlays.get(0).isCurrentProject()) {
-        overlays.remove(0);
-      }
-      
-      //Component order must be inverted to follow maven's overlay order behaviour 
-      //as in WTP, last components supersede the previous ones
-      Collections.reverse(overlays);
-
-      return overlays;
-    } catch(MojoExecutionException ex) {
-      throw new RuntimeException(ex);
+    // Remove the current project overlay if it is the only item as it will be handled by the WAR component.
+    // If the current project is in list a CurrentProjectOverlayVictualComponent will be created 
+    // to ensure the specified overlay order is respected
+    if(overlays.size() == 1 && overlays.get(0).isCurrentProject()) {
+      overlays.remove(0);
     }
+
+    //Component order must be inverted to follow maven's overlay order behaviour 
+    //as in WTP, last components supersede the previous ones
+    Collections.reverse(overlays);
+
+    return overlays;
   }
 
-  private IVirtualComponent getOverlayAsVirtualComponent(IProject project, MavenProject mavenProject, Overlay overlay) {
-
+  /**
+   * Returns a {@link IOverlayVirtualComponent} for the given {@link Overlay}.
+   * 
+   * @param project the current WTP project
+   * @param mavenProject the maven project
+   * @param overlay the overlay to convert
+   * @return a {@link IOverlayVirtualComponent} for the overlay
+   */
+  private IOverlayVirtualComponent getOverlayVirtualComponent(IProject project, MavenProject mavenProject,
+      Overlay overlay) {
     if(overlay.shouldSkip()) {
       return null;
     }
-    IOverlayVirtualComponent overlayComponent = createOverlayComponent(project, mavenProject, overlay);
-    overlayComponent.setInclusions(new LinkedHashSet<String>(Arrays.asList(overlay.getIncludes())));
-    overlayComponent.setExclusions(new LinkedHashSet<String>(Arrays.asList(overlay.getExcludes())));
-    return overlayComponent;
-  }
 
-  private IOverlayVirtualComponent createOverlayComponent(IProject project, MavenProject mavenProject, Overlay overlay) {
     IMavenProjectFacade workspaceDependency = getWorkspaceDependency(overlay);
 
     if(workspaceDependency == null) {
@@ -169,9 +185,20 @@ public class OverlayConfigurator extends WTPProjectConfigurator {
     if(overlayProject != null && overlayProject.equals(project)) {
       return OverlayComponentCore.createSelfOverlayComponent(overlayProject);
     }
-    return OverlayComponentCore.createOverlayComponent(overlayProject);
+    IOverlayVirtualComponent overlayComponent = OverlayComponentCore.createOverlayComponent(overlayProject,
+        overlay.getType());
+    overlayComponent.setInclusions(new LinkedHashSet<String>(Arrays.asList(overlay.getIncludes())));
+    overlayComponent.setExclusions(new LinkedHashSet<String>(Arrays.asList(overlay.getExcludes())));
+    return overlayComponent;
   }
 
+  /**
+   * Returns the {@link IMavenProjectFacade workspace} dependency for the given {@link Overlay} or <tt>null</tt> if the
+   * overlay is not in the workspace.
+   * 
+   * @param overlay the overlay
+   * @return a {@link IMavenProjectFacade} or <tt>null</tt>
+   */
   private IMavenProjectFacade getWorkspaceDependency(Overlay overlay) {
     Artifact artifact = overlay.getArtifact();
     IMavenProjectFacade workspaceDependency = projectManager.getMavenProject(artifact.getGroupId(),
@@ -179,11 +206,24 @@ public class OverlayConfigurator extends WTPProjectConfigurator {
     return workspaceDependency;
   }
 
+  /**
+   * Returns <tt>true</tt> if the overlay references specified differ from the current references set on the component.
+   * 
+   * @param virtualComponent the virtual component
+   * @param overlayReferences the reference to compare
+   * @return <tt>true</tt> if the references have changed
+   */
   private boolean referencesHaveChanged(IVirtualComponent virtualComponent, IVirtualReference[] overlayReferences) {
     IVirtualReference[] existingOverlayReferences = WTPProjectsUtil.extractHardReferences(virtualComponent, true);
     return (WTPProjectsUtil.hasChanged2(existingOverlayReferences, overlayReferences));
   }
 
+  /**
+   * Update the specified {@link IVirtualComponent} to use a specific set of overlay references.
+   * 
+   * @param virtualComponent the component to update
+   * @param overlayReferences the new set of overlay references
+   */
   private void updateReferences(IVirtualComponent virtualComponent, IVirtualReference[] overlayReferences) {
     IVirtualReference[] existingNonOverlayReferences = WTPProjectsUtil.extractHardReferences(virtualComponent, false);
     IVirtualReference[] updatedReferences = new IVirtualReference[existingNonOverlayReferences.length
@@ -194,6 +234,14 @@ public class OverlayConfigurator extends WTPProjectConfigurator {
     virtualComponent.setReferences(updatedReferences);
   }
 
+  /**
+   * Factory method to create a new {@link IOverlayVirtualComponent} for the specified overlay.
+   * 
+   * @param project the current WTP project
+   * @param mavenProject the maven project
+   * @param overlay the overlay used to create the virtual component
+   * @return a new {@link IOverlayVirtualComponent}
+   */
   private IOverlayVirtualComponent createOverlayArchiveComponent(IProject project, MavenProject mavenProject,
       Overlay overlay) {
     IPath m2eWtpFolder = ProjectUtils.getM2eclipseWtpFolder(mavenProject, project);
@@ -203,6 +251,11 @@ public class OverlayConfigurator extends WTPProjectConfigurator {
         getTargetPath(overlay));
   }
 
+  /**
+   * Returns the target path that should be used for the given {@link Overlay}.
+   * @param overlay the overlay
+   * @return the target path
+   */
   private IPath getTargetPath(Overlay overlay) {
     String targetPath = overlay.getTargetPath();
     if(StringUtils.nullOrEmpty(targetPath)) {

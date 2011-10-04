@@ -19,20 +19,12 @@ import org.eclipse.wst.common.componentcore.resources.IVirtualComponent;
  */
 public interface IOverlayVirtualComponent extends IVirtualComponent {
 
-	/**
-	 */
 	void setInclusions(Set<String> inclusionPatterns);
 	
-	/**
-	 */
-	void setExclusions(Set<String> inclusionPatterns);
+	void setExclusions(Set<String> exclusionPatterns);
 	
-	/**
-	 */
 	Set<String> getExclusions();
 
-	/**
-	 */
 	Set<String> getInclusions();
 	
 }

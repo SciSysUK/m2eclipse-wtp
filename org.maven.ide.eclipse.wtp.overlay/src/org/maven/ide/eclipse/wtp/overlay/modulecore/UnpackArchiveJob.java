@@ -13,6 +13,7 @@ import org.eclipse.core.runtime.Status;
 import org.maven.ide.eclipse.wtp.overlay.OverlayPluginActivator;
 import org.maven.ide.eclipse.wtp.overlay.utilities.CompressionUtil;
 
+@Deprecated
 public class UnpackArchiveJob extends WorkspaceJob {
 
 	private IFolder unpackFolder;

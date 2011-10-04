@@ -10,9 +10,9 @@ package org.maven.ide.eclipse.wtp.overlay.modulecore;
 
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.IPath;
-import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.v2.ArchiveOverlayVirtualComponent;
-import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.v2.CurrentProjectOverlayVictualComponent;
-import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.v2.ProjectOverlayVirtualComponent;
+import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.ArchiveOverlayVirtualComponent;
+import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.ProjectOverlayVirtualComponent;
+import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.SelfOverlayVirtualComponent;
 
 /**
  * Overlay Component Core
@@ -27,7 +27,7 @@ public class OverlayComponentCore {
 
 	//TODO check and prevent circular references
 	public static IOverlayVirtualComponent createSelfOverlayComponent(IProject aProject) {
-		return new CurrentProjectOverlayVictualComponent(aProject);
+		return new SelfOverlayVirtualComponent(aProject);
 	}
 
 	public static IOverlayVirtualComponent createOverlayArchiveComponent(IProject aComponentProject, String archiveLocation, IPath unpackDirPath, IPath aRuntimePath) {
