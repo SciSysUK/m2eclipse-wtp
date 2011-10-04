@@ -17,8 +17,14 @@ public class CurrentProjectOverlayVictualComponent extends VirtualComponent impl
 
 	private static final IVirtualReference[] NO_REFERENCES = new IVirtualReference[0];
 	
+	private static final String REFERENCE_TYPE = "slf";
+	
 	public CurrentProjectOverlayVictualComponent(IProject project) {
 		super(project, IVirtualComponent.ROOT);
+	}
+	
+	public String getReferenceType() {
+		return REFERENCE_TYPE;
 	}
 
 	public IVirtualFolder getRootFolder() {

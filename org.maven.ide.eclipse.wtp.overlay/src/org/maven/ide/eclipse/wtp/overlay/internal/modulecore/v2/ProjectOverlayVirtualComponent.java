@@ -27,6 +27,9 @@ import org.eclipse.wst.common.componentcore.resources.IVirtualResource;
 import org.maven.ide.eclipse.wtp.overlay.modulecore.IOverlayVirtualComponent;
 
 /**
+ * 
+ * TODO FIX COMMENT 
+ * 
  * A {@link IOverlayVirtualComponent} that deals with references to other workspace {@link IProject projects}. This
  * component can be used to support the following types of overlay: <ul> <li><b>Standard Overlay</b> : A reference to
  * another project that will be completely consumed. The referenced project will be packaged itself before being
@@ -45,10 +48,13 @@ public class ProjectOverlayVirtualComponent extends VirtualComponent implements 
 	private IProject overlayProject;
 
 	private OverlayFilter overlayFilter = new OverlayFilter();
+	
+	private String type;
 
-	public ProjectOverlayVirtualComponent(IProject overlayProject) {
+	public ProjectOverlayVirtualComponent(IProject overlayProject, String type) {
 		super(overlayProject, ROOT);
 		this.overlayProject = overlayProject;
+		this.type = type;
 	}
 
 	public IVirtualFolder getRootFolder() {

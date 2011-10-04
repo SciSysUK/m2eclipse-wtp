@@ -17,7 +17,7 @@ import org.eclipse.wst.common.componentcore.resources.IVirtualComponent;
  *
  * @author Fred Bricon
  */
-public interface IOverlayVirtualComponent extends IVirtualComponent{
+public interface IOverlayVirtualComponent extends IVirtualComponent {
 
 	/**
 	 */
@@ -34,5 +34,5 @@ public interface IOverlayVirtualComponent extends IVirtualComponent{
 	/**
 	 */
 	Set<String> getInclusions();
-
+	
 }

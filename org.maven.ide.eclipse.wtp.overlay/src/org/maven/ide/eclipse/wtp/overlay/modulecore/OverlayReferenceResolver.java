@@ -8,15 +8,12 @@
 
 package org.maven.ide.eclipse.wtp.overlay.modulecore;
 
+import java.util.Arrays;
 import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
-import org.eclipse.core.resources.IProject;
-import org.eclipse.core.resources.ResourcesPlugin;
-import org.eclipse.core.runtime.IPath;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.wst.common.componentcore.ComponentCore;
 import org.eclipse.wst.common.componentcore.internal.ComponentcorePackage;
@@ -25,156 +22,132 @@ import org.eclipse.wst.common.componentcore.internal.ReferencedComponent;
 import org.eclipse.wst.common.componentcore.resolvers.IReferenceResolver;
 import org.eclipse.wst.common.componentcore.resources.IVirtualComponent;
 import org.eclipse.wst.common.componentcore.resources.IVirtualReference;
-import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.v1.OverlaySelfComponent;
-import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.v2.ArchiveOverlayVirtualComponent;
+import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.v2.converter.ArchiveOveralyVirtualComponentURIConverter;
+import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.v2.converter.CurrentProjectOverlayVirtualComponentURIConverter;
+import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.v2.converter.OverlayComponentURIData;
+import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.v2.converter.OverlayVirtualComponentURIConverter;
+import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.v2.converter.ProjectOverlayVirtualComponentURIConverter;
 
 /**
  * Overlay Reference Resolver
- *
+ * 
  * @author Fred Bricon
  */
 @SuppressWarnings("restriction")
 public class OverlayReferenceResolver implements IReferenceResolver {
 
-  public static final String PROTOCOL = "module:/overlay/";
-  
-  public static final String PROJECT_PROTOCOL = PROTOCOL+"prj/";
-
-  public static final String VAR_ARCHIVE_PROTOCOL = PROTOCOL+"var/";
-
-  public static final String SELF_PROTOCOL = PROTOCOL+"slf/";
-
-  private static final String UNPACK_FOLDER = "unpackFolder";
-  
-  private static final String INCLUDES = "includes";
-
-  private static final String EXCLUDES = "excludes";
-
-  public boolean canResolve(IVirtualComponent component, ReferencedComponent referencedComponent) {
-    URI uri = referencedComponent.getHandle();
-    return (uri.segmentCount() > 2) && (uri.segment(0).equals("overlay"));
-  }
-
-  public IVirtualReference resolve(IVirtualComponent component, ReferencedComponent referencedComponent) {
-	String type = referencedComponent.getHandle().segment(1); 
-	IOverlayVirtualComponent overlayComponent = null;
-	String url = referencedComponent.getHandle().toString();
-	Map<String, String> parameters = ModuleURIUtil.parseUri(url);
+	private static final String URI_SEPERATOR = "&";
 	
-	String moduleName = ModuleURIUtil.extractModuleName(url);
-	if (moduleName == null || moduleName.trim().length() == 0) {
-		throw new IllegalArgumentException("module name can not be inferred from "+url);
-	}
+	private static final String PROTOCOL = "module:";
+	private static final String TYPE = "overlay";
+	private static final String PREFIX = PROTOCOL + "/" + TYPE;
+
+	private List<OverlayVirtualComponentURIConverter> overalyVirtualComponentURIConverters = Arrays.asList(
+			new ArchiveOveralyVirtualComponentURIConverter(), new ProjectOverlayVirtualComponentURIConverter(),
+			new CurrentProjectOverlayVirtualComponentURIConverter());
 	
-	if ("prj".equals(type)) {
-		overlayComponent = createProjectComponent(component, moduleName.substring(PROJECT_PROTOCOL.length()));
-	} else if ("var".equals(type)) {
-		String unpackFolder = parameters.get(UNPACK_FOLDER);
-		if (unpackFolder == null || unpackFolder.trim().length() == 0) {
-			throw new IllegalArgumentException(url + " is missing the "+UNPACK_FOLDER+" parameter");
-		}
-		overlayComponent = createArchivecomponent(component, 
-									  moduleName.substring(PROTOCOL.length()), 
-									  unpackFolder, 
-									  referencedComponent.getRuntimePath());
-		
-	} else if ("slf".equals(type)){
-		overlayComponent = createSelfComponent(component);
-	}
-	if (overlayComponent == null) {
-		throw new IllegalArgumentException(referencedComponent.getHandle() + " could not be resolved");
-	}
-	
-	overlayComponent.setInclusions(getPatternSet(parameters.get(INCLUDES)));
-	overlayComponent.setExclusions(getPatternSet(parameters.get(EXCLUDES)));
 
-	IVirtualReference ref = ComponentCore.createReference(component, overlayComponent);
-    ref.setArchiveName(referencedComponent.getArchiveName());
-    ref.setRuntimePath(referencedComponent.getRuntimePath());
-    ref.setDependencyType(referencedComponent.getDependencyType().getValue());
-    return ref;
-  }
-
-  private Set<String> getPatternSet(String patterns) {
-	if (patterns == null || patterns.trim().length() == 0) {
-		return Collections.emptySet();
-	}
-	Set<String> patternSet = new LinkedHashSet<String>();
-	for (String pattern : patterns.split(";")) {
-		patternSet.add(pattern);
-	}
-	return patternSet;
-  }
-
-  private IOverlayVirtualComponent createSelfComponent(IVirtualComponent component) {
-	  return OverlayComponentCore.createSelfOverlayComponent(component.getProject());
-  }
-
-  private IOverlayVirtualComponent createArchivecomponent(IVirtualComponent component, String url, String targetPath, IPath runtimePath) {
-  	return OverlayComponentCore.createOverlayArchiveComponent(component.getProject(), url, component.getProject().getFolder(targetPath).getProjectRelativePath(), runtimePath);
-  }
-
-  private IOverlayVirtualComponent createProjectComponent(IVirtualComponent component, String name) {
-    IProject p = null;   
-	if("".equals(name)) {
-      p = component.getProject();
-    } else {
-      p = ResourcesPlugin.getWorkspace().getRoot().getProject(name);    	
-    }
-	if (p == null) {
-		throw new IllegalArgumentException(name + " is not a workspace project");
-	}
-	return OverlayComponentCore.createOverlayComponent(p);
-  }
-
-  public boolean canResolve(IVirtualReference reference) {
-    return  reference != null && reference.getReferencedComponent() instanceof IOverlayVirtualComponent;
-  }
-
-  public ReferencedComponent resolve(IVirtualReference reference) {
-    if(canResolve(reference)) {
-      IOverlayVirtualComponent comp = (IOverlayVirtualComponent)reference.getReferencedComponent();
-      ReferencedComponent rc = ComponentcorePackage.eINSTANCE.getComponentcoreFactory().createReferencedComponent();
-      rc.setArchiveName(reference.getArchiveName());
-      rc.setRuntimePath(reference.getRuntimePath());
-      URI handle;
-      Map<String, String> parameters = new LinkedHashMap<String, String>(3);
-      if (comp instanceof ArchiveOverlayVirtualComponent) {
-    	  ArchiveOverlayVirtualComponent archivecomp = (ArchiveOverlayVirtualComponent) comp;
-    	  handle = URI.createURI(VAR_ARCHIVE_PROTOCOL+archivecomp.getArchivePath().toPortableString());
-    	  parameters.put(UNPACK_FOLDER, archivecomp.getUnpackDirPath().toPortableString());
-      } else {
-    	  IProject p = comp.getProject();
-    	  if (p.equals(reference.getEnclosingComponent().getProject())) {
-        	  handle = URI.createURI(SELF_PROTOCOL);
-    	  } else {
-        	  handle = URI.createURI(PROJECT_PROTOCOL+p.getName());
-    	  }
-      }
-      parameters.put(INCLUDES, flatten(comp.getInclusions()));
-      parameters.put(EXCLUDES, flatten(comp.getExclusions()));
-      handle = URI.createURI(ModuleURIUtil.appendToUri(handle.toString(), parameters));
-	  rc.setHandle(handle); 
-      rc.setDependencyType(DependencyType.CONSUMES_LITERAL);
-      return rc;
-    }
-    return null;
-  }
-
-	private String flatten(Set<String> patterns) {
-		StringBuilder sb = new StringBuilder();
-		if (patterns != null) {
-			boolean initialized = false;
-			for(String pattern : patterns) {
-				if (initialized) {
-					sb.append(";");
-				} else {
-					initialized = true;
+	public boolean canResolve(IVirtualComponent context, ReferencedComponent referencedComponent) {
+		URI uri = referencedComponent.getHandle();
+		if (isOverlayModule(uri) && context instanceof IOverlayVirtualComponent) {
+			for (OverlayVirtualComponentURIConverter converter : overalyVirtualComponentURIConverters) {
+				if (converter.isSupported(uri.segment(1))) {
+					return true;
 				}
-				sb.append(pattern);
 			}
 		}
-		return sb.toString();
+		return false;
+	}
+
+	public IVirtualReference resolve(IVirtualComponent context, ReferencedComponent referencedComponent) {
+		if (canResolve(context, referencedComponent)) {
+			URI uri = referencedComponent.getHandle();
+			for (OverlayVirtualComponentURIConverter converter : overalyVirtualComponentURIConverters) {
+				if (converter.isSupported(uri.segment(1))) {
+					String postfix = uri.segment(2); // TODO - this looks like it won't work for Archives
+					OverlayComponentURIData uriData = new OverlayComponentURIData(uri.segment(1), postfix, getParameters(uri.query()));
+					IVirtualComponent overlayComponent = converter.createOverlayVirtualComponent(context, uriData, referencedComponent.getRuntimePath());
+					IVirtualReference ref = ComponentCore.createReference(context, overlayComponent);
+					ref.setArchiveName(referencedComponent.getArchiveName());
+					ref.setRuntimePath(referencedComponent.getRuntimePath());
+					ref.setDependencyType(referencedComponent.getDependencyType().getValue());
+					return ref;
+				}
+			}
+		}
+		throw new RuntimeException("Unable to resolve context: "+ context +" referencedCompontent: "+ referencedComponent);
+	}
+
+	public boolean canResolve(IVirtualReference reference) {
+		if (reference != null && reference.getReferencedComponent() instanceof IOverlayVirtualComponent) {
+			for (OverlayVirtualComponentURIConverter converter : overalyVirtualComponentURIConverters) {
+				if (converter.isSupported((IOverlayVirtualComponent) reference.getReferencedComponent())) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	public ReferencedComponent resolve(IVirtualReference reference) {
+		if (canResolve(reference)) {
+			ReferencedComponent rc = ComponentcorePackage.eINSTANCE.getComponentcoreFactory().createReferencedComponent();
+			rc.setArchiveName(reference.getArchiveName());
+			rc.setRuntimePath(reference.getRuntimePath());
+			rc.setDependencyType(DependencyType.CONSUMES_LITERAL);
+			rc.setHandle(createURI(reference));
+			return rc;
+		}
+		throw new RuntimeException("Unable to resolve reference: "+ reference);
+	}
+
+	
+	private URI createURI(IVirtualReference reference) {
+		IOverlayVirtualComponent overlayComponent = (IOverlayVirtualComponent) reference.getReferencedComponent();
+		for (OverlayVirtualComponentURIConverter converter : overalyVirtualComponentURIConverters) {
+			if (converter.isSupported(overlayComponent)) {
+				OverlayComponentURIData uriData = converter.createOverlayComponentURIData(overlayComponent);
+				return buildURI(uriData);
+			}
+		}
+		throw new RuntimeException("No converters were able to handle overlay component");
+	}
+
+	private URI buildURI(OverlayComponentURIData uriData) {
+		String queryString = buildQueryString(uriData.getParams());
+		return URI.createURI(PREFIX).appendSegment(uriData.getReferenceType()).appendSegment(uriData.getPostfix())
+				.appendQuery(queryString);
+	}
+
+	private String buildQueryString(Map<String, String> params) {
+		StringBuilder builder = new StringBuilder();
+		for (String key : params.keySet()) {
+			builder.append(key).append("=").append(params.get(key));
+			builder.append(URI_SEPERATOR);
+		}
+		return builder.toString();
+	}
+
+	private boolean isOverlayModule(URI uri) {
+		return uri.segmentCount() > 2 && uri.segment(0).equals(TYPE);
+	}
+	
+	public Map<String, String> getParameters(String queryString) {
+		if (queryString == null || queryString.length() == 0) {
+			return Collections.emptyMap();
+		}
+		Map<String, String> parameters = new HashMap<String, String>();
+		String[] entries = queryString.split(URI_SEPERATOR);
+		for (String entry : entries) {
+			if ("".equals(entry)) {
+				continue;
+			}
+			String[] keyValue = entry.split("=");
+			if (keyValue.length == 2) {
+				parameters.put(keyValue[0], keyValue[1]);
+			}
+		}
+		return parameters;
 	}
 
 }

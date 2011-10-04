@@ -8,6 +8,7 @@ import java.util.jar.JarFile;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.IPath;
+import org.eclipse.jem.util.emf.workbench.ProjectUtilities;
 import org.eclipse.wst.common.componentcore.internal.resources.VirtualArchiveComponent;
 import org.eclipse.wst.common.componentcore.resources.IVirtualFolder;
 import org.maven.ide.eclipse.wtp.overlay.modulecore.IOverlayVirtualComponent;
@@ -20,7 +21,7 @@ import org.maven.ide.eclipse.wtp.overlay.modulecore.IOverlayVirtualComponent;
  */
 @SuppressWarnings("restriction")
 public class ArchiveOverlayVirtualComponent extends VirtualArchiveComponent implements IOverlayVirtualComponent {
-
+	
 	private OverlayFilter overlayFilter = new OverlayFilter();
 	
 	private IPath unpackDirPath;
@@ -29,7 +30,7 @@ public class ArchiveOverlayVirtualComponent extends VirtualArchiveComponent impl
 		super(project, archiveLocation, runtimePath);
 		this.unpackDirPath = unpackDirPath;
 	}
-
+	
 	public IVirtualFolder getRootFolder() {
 		return overlayFilter.apply(getUnfilteredRootFolder());
 	}
@@ -96,4 +97,5 @@ public class ArchiveOverlayVirtualComponent extends VirtualArchiveComponent impl
 		result = prime * result + overlayFilter.hashCode();
 		return result;
 	}
+
 }

@@ -8,7 +8,7 @@ public class ModuleURIUtil {
 
 	public static final String URI_SEPARATOR = "&";
 	
-	public static Map<String, String> parseUri(String uri) {
+	public static Map<String, String> getParameters(String uri) {
 		if (uri == null || uri.length() == 0) {
 			return Collections.emptyMap();
 		}
