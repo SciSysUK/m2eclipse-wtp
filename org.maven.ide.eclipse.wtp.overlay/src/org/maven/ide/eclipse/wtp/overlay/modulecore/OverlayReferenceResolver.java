@@ -34,7 +34,7 @@ public class OverlayReferenceResolver implements IReferenceResolver {
 
   //FIXME replace calls to ModuleURIUtil
 
-  private static final String PROTOCOL = "module:";
+  private static final String SCHEME = "module";
 
   private static final String OVERLAY = "overlay";
 
@@ -127,7 +127,7 @@ public class OverlayReferenceResolver implements IReferenceResolver {
    * @return an {@link OverlayURI} or <tt>null</tt>
    */
   private OverlayURI getOverlayUri(URI uri) {
-    if(uri.segmentCount() > 2 && OVERLAY.equals(uri.segment(0))) {
+    if(SCHEME.equals(uri.scheme()) && uri.segmentCount() >= 2 && OVERLAY.equals(uri.segment(0))) {
       String type = uri.segment(1);
       List<String> segments = new ArrayList<String>();
       for(int i = 2; i < uri.segmentCount(); i++ ) {
@@ -144,8 +144,8 @@ public class OverlayReferenceResolver implements IReferenceResolver {
    * @return
    */
   private URI getUri(OverlayURI overlayURI) {
-    StringBuilder uri = new StringBuilder(PROTOCOL);
-    uri.append("/");
+    StringBuilder uri = new StringBuilder(SCHEME);
+    uri.append(":/");
     uri.append(OVERLAY);
     uri.append("/");
     uri.append(overlayURI.getType());

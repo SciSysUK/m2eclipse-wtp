@@ -171,10 +171,27 @@ public class OverlayConfigurator extends WTPProjectConfigurator {
    */
   private IOverlayVirtualComponent getOverlayVirtualComponent(IProject project, MavenProject mavenProject,
       Overlay overlay) {
+
     if(overlay.shouldSkip()) {
       return null;
     }
 
+    IOverlayVirtualComponent overlayComponent = createOverlayComponent(project, mavenProject, overlay);
+    overlayComponent.setInclusions(new LinkedHashSet<String>(Arrays.asList(overlay.getIncludes())));
+    overlayComponent.setExclusions(new LinkedHashSet<String>(Arrays.asList(overlay.getExcludes())));
+    return overlayComponent;
+  }
+
+  /**
+   * Create a new overlay component for the given {@link Overlay}. This returned component will not have include/exclude
+   * filters set.
+   * 
+   * @param project the current WTP project
+   * @param mavenProject the maven project
+   * @param overlay the overlay
+   * @return a new overlay component
+   */
+  private IOverlayVirtualComponent createOverlayComponent(IProject project, MavenProject mavenProject, Overlay overlay) {
     IMavenProjectFacade workspaceDependency = getWorkspaceDependency(overlay);
 
     if(workspaceDependency == null) {
@@ -185,11 +202,24 @@ public class OverlayConfigurator extends WTPProjectConfigurator {
     if(overlayProject != null && overlayProject.equals(project)) {
       return OverlayComponentCore.createSelfOverlayComponent(overlayProject);
     }
-    IOverlayVirtualComponent overlayComponent = OverlayComponentCore.createOverlayComponent(overlayProject,
-        overlay.getType());
-    overlayComponent.setInclusions(new LinkedHashSet<String>(Arrays.asList(overlay.getIncludes())));
-    overlayComponent.setExclusions(new LinkedHashSet<String>(Arrays.asList(overlay.getExcludes())));
-    return overlayComponent;
+    return OverlayComponentCore.createOverlayComponent(overlayProject, overlay.getType());
+  }
+
+  /**
+   * Factory method to create a new {@link IOverlayVirtualComponent} for the specified overlay.
+   * 
+   * @param project the current WTP project
+   * @param mavenProject the maven project
+   * @param overlay the overlay used to create the virtual component
+   * @return a new {@link IOverlayVirtualComponent}
+   */
+  private IOverlayVirtualComponent createOverlayArchiveComponent(IProject project, MavenProject mavenProject,
+      Overlay overlay) {
+    IPath m2eWtpFolder = ProjectUtils.getM2eclipseWtpFolder(mavenProject, project);
+    IPath unpackDirPath = new Path(m2eWtpFolder.toOSString() + "/overlays");
+    String archiveLocation = ArtifactHelper.getM2REPOVarPath(overlay.getArtifact());
+    return OverlayComponentCore.createOverlayArchiveComponent(project, archiveLocation, unpackDirPath,
+        getTargetPath(overlay));
   }
 
   /**
@@ -235,24 +265,8 @@ public class OverlayConfigurator extends WTPProjectConfigurator {
   }
 
   /**
-   * Factory method to create a new {@link IOverlayVirtualComponent} for the specified overlay.
-   * 
-   * @param project the current WTP project
-   * @param mavenProject the maven project
-   * @param overlay the overlay used to create the virtual component
-   * @return a new {@link IOverlayVirtualComponent}
-   */
-  private IOverlayVirtualComponent createOverlayArchiveComponent(IProject project, MavenProject mavenProject,
-      Overlay overlay) {
-    IPath m2eWtpFolder = ProjectUtils.getM2eclipseWtpFolder(mavenProject, project);
-    IPath unpackDirPath = new Path(m2eWtpFolder.toOSString() + "/overlays");
-    String archiveLocation = ArtifactHelper.getM2REPOVarPath(overlay.getArtifact());
-    return OverlayComponentCore.createOverlayArchiveComponent(project, archiveLocation, unpackDirPath,
-        getTargetPath(overlay));
-  }
-
-  /**
    * Returns the target path that should be used for the given {@link Overlay}.
+   * 
    * @param overlay the overlay
    * @return the target path
    */

@@ -11,6 +11,8 @@ import org.eclipse.wst.common.componentcore.internal.resources.VirtualComponent;
 import org.eclipse.wst.common.componentcore.resources.IVirtualComponent;
 import org.eclipse.wst.common.componentcore.resources.IVirtualFolder;
 import org.eclipse.wst.common.componentcore.resources.IVirtualReference;
+import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.filter.ExludeJavaPathFilter;
+import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.filter.FilteredVirtualFolder;
 import org.maven.ide.eclipse.wtp.overlay.modulecore.IOverlayVirtualComponent;
 
 
@@ -43,7 +45,7 @@ public class SelfOverlayVirtualComponent extends VirtualComponent implements IOv
     if(component == null) {
       return null;
     }
-    return component.getRootFolder();
+    return new FilteredVirtualFolder(component.getRootFolder(), new ExludeJavaPathFilter());
   }
 
   @Override
@@ -52,11 +54,11 @@ public class SelfOverlayVirtualComponent extends VirtualComponent implements IOv
   }
 
   public void setInclusions(Set<String> inclusionPatterns) {
-    //We currently do not support filtering of self overlays
+    //We currently do not support filter configuration of self overlays
   }
 
   public void setExclusions(Set<String> exclusPatterns) {
-    //We currently do not support filtering of self overlays
+    //We currently do not support filter configuration of self overlays
   }
 
   public Set<String> getExclusions() {

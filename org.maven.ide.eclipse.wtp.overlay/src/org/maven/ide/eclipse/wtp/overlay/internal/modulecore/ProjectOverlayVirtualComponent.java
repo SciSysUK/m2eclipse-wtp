@@ -1,7 +1,7 @@
 
 package org.maven.ide.eclipse.wtp.overlay.internal.modulecore;
 
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -80,10 +80,14 @@ public class ProjectOverlayVirtualComponent extends VirtualComponent implements 
   }
 
   private List<IFlattenParticipant> getFlattenParticipants() {
-    return Arrays.<IFlattenParticipant> asList(new SingleRootExportParticipant(new JavaEESingleRootCallback()),
-        new JEEHeirarchyExportParticipant(), new AddClasspathLibReferencesParticipant(),
-        new AddClasspathFoldersParticipant(), new AddMappedOutputFoldersParticipant(),
-        new IgnoreJavaInSourceFolderParticipant());
+    List<IFlattenParticipant> participants = new ArrayList<IFlattenParticipant>();
+    participants.add(new SingleRootExportParticipant(new JavaEESingleRootCallback()));
+    participants.add(new JEEHeirarchyExportParticipant());
+    participants.add(new AddClasspathLibReferencesParticipant());
+    participants.add(new AddClasspathFoldersParticipant());
+    participants.add(new AddMappedOutputFoldersParticipant());
+    participants.add(new IgnoreJavaInSourceFolderParticipant());
+    return participants;
   }
 
   @Override
@@ -116,7 +120,7 @@ public class ProjectOverlayVirtualComponent extends VirtualComponent implements 
   public Set<String> getExclusions() {
     return overlayFilter.getExclusions();
   }
-  
+
   @Override
   public boolean equals(Object obj) {
     if(this == obj)
