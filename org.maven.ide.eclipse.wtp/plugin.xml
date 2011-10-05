@@ -12,6 +12,11 @@
       name="War Build Lifecycle Mapping">
     </lifecycleMapping>
     <lifecycleMapping
+          class="org.maven.ide.eclipse.wtp.internal.lifecycle.WarOverlayLifecycleMapping"
+          id="org.maven.ide.eclipse.wtp.WarOverlayLifecycleMapping"
+          name="War Overlay Build Lifecycle Mapping">
+    </lifecycleMapping>
+    <lifecycleMapping
       class="org.maven.ide.eclipse.wtp.internal.lifecycle.EjbLifecycleMapping"
       id="org.maven.ide.eclipse.wtp.EjbLifecycleMapping"
       name="Ejb Build Lifecycle Mapping">
