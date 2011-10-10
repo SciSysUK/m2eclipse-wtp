@@ -1,72 +1,145 @@
 
 package org.maven.ide.eclipse.wtp.overlay.internal.modulecore.resource;
 
-import java.util.Collection;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Enumeration;
+import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
+import org.eclipse.core.resources.IContainer;
+import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
+import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
+import org.eclipse.wst.common.componentcore.resources.IVirtualComponent;
 import org.eclipse.wst.common.componentcore.resources.IVirtualFolder;
 import org.eclipse.wst.common.componentcore.resources.IVirtualResource;
 
+
 /**
- * Adapts content from a {@link JarFile} into a {@link IVirtualFolder}.
+ * Adapts {@link File}s containing {@link JarFile jar} content into {@link IVirtualFolder}s.
+ * 
+ * @see JarVirtualNestedFolder
+ * @see JarVirtualFile
  */
-class JarVirtualFolder extends PartialReadOnlyVirtualFolder {
+public class JarVirtualFolder extends PartialReadOnlyVirtualFolder {
 
   private IProject project;
 
-  private JarFile jarFile;
+  private File archive;
 
-  private String name;
+  private IPath unpackDirPath;
 
-  private IPath runtimePath;
+  private JarVirtualNestedFolder rootFolder;
 
-  private Map<String, IVirtualResource> members = new LinkedHashMap<String, IVirtualResource>();
-
-  protected JarVirtualFolder(IProject project, JarFile jarFile, String name, IPath runtimePath) {
+  public JarVirtualFolder(IProject project, File archive, IPath unpackDirPath) throws IOException {
     this.project = project;
-    this.jarFile = jarFile;
-    //FIXME when to close jar file
-    this.name = name;
-    this.runtimePath = runtimePath;
+    this.archive = archive;
+    this.unpackDirPath = unpackDirPath;
+    this.rootFolder = new JarVirtualNestedFolder(this, IVirtualComponent.ROOT);
+    buildMembersFromJarEntries();
   }
 
-  public JarVirtualFolder getOrAddFolder(String name) {
-    IVirtualResource folder = members.get(name);
-    if(folder == null) {
-      folder = new JarVirtualFolder(project, jarFile, name, runtimePath.append(name));
-      members.put(name, folder);
+  private void buildMembersFromJarEntries() throws IOException {
+    JarFile jarFile = new JarFile(archive);
+    try {
+      Enumeration<JarEntry> entries = jarFile.entries();
+      while(entries.hasMoreElements()) {
+        JarEntry entry = entries.nextElement();
+        addJarEntry(entry);
+      }
+    } finally {
+      jarFile.close();
     }
-    return (JarVirtualFolder) folder;
   }
 
-  protected void addMember(IVirtualResource member) {
-    members.put(member.getName(), member);
+  private void addJarEntry(JarEntry entry) {
+    String name = removeTrailingSlash(entry.getName());
+    JarVirtualNestedFolder current = rootFolder;
+    while(name.indexOf("/") >= 0) {
+      String parentName = name.substring(0, name.indexOf("/"));
+      current = current.getOrAddFolder(parentName);
+      name = name.substring(name.indexOf("/") + 1);
+    }
+    current.addMember(adaptEntry(entry, name, current));
   }
 
-  protected JarFile getJarFile() {
-    return jarFile;
+  private String removeTrailingSlash(String name) {
+    if(name.endsWith("/")) {
+      return name.substring(0, name.length() - 1);
+    }
+    return name;
+  }
+
+  private IVirtualResource adaptEntry(JarEntry entry, String name, JarVirtualNestedFolder folder) {
+    IPath childRuntimePath = folder.getRuntimePath().append(name);
+    if(entry.isDirectory()) {
+      return new JarVirtualNestedFolder(this, childRuntimePath);
+    }
+    return new JarVirtualFile(this, entry, childRuntimePath);
+  }
+
+  /**
+   * Unpack a {@link JarEntry} and return a {@link IFile} that can be used from within the workspace.
+   * 
+   * @param jarEntry the entry to unpack
+   * @return a {@link IFile}
+   */
+  IFile unpackJarEntry(JarEntry jarEntry) {
+    IFolder archiveUnpackFolder = getProject().getFolder(unpackDirPath).getFolder(archive.getName());
+    IFile destination = archiveUnpackFolder.getFile(jarEntry.getName());
+
+    if(!destination.exists() || isOlderThanArchive(destination)) {
+      try {
+        unpackFile(jarEntry, destination);
+        destination.refreshLocal(IFile.DEPTH_ZERO, null);
+      } catch(Exception e) {
+        throw new RuntimeException(e.getLocalizedMessage(), e);
+      }
+    }
+    return destination;
+  }
+
+  private boolean isOlderThanArchive(IFile destination) {
+    return archive.lastModified() > destination.getLocalTimeStamp();
+  }
+
+  private void unpackFile(JarEntry jarEntry, IFile unpackedFile) throws IOException, CoreException {
+    JarFile jarFile = new JarFile(archive);
+    try {
+      InputStream inputStream = jarFile.getInputStream(jarEntry);
+      if(unpackedFile.exists()) {
+        unpackedFile.setContents(jarFile.getInputStream(jarEntry), IResource.FORCE | IResource.DERIVED, null);
+      } else {
+        ensureContainerExists(unpackedFile.getParent());
+        unpackedFile.create(inputStream, IResource.FORCE | IResource.DERIVED, null);
+      }
+    } finally {
+      jarFile.close();
+    }
+  }
+
+  private void ensureContainerExists(IContainer resource) throws CoreException {
+    if(!resource.exists() && resource instanceof IFolder) {
+      ensureContainerExists(resource.getParent());
+      ((IFolder) resource).create(IResource.FORCE | IResource.DERIVED, true, null);
+    }
   }
 
   public IVirtualResource[] members() throws CoreException {
-    Collection<IVirtualResource> memberValues = members.values();
-    return memberValues.toArray(new IVirtualResource[memberValues.size()]);
-  }
-
-  @Override
-  public String getName() {
-    return name;
+    return rootFolder.members();
   }
 
   @Override
   public IPath getRuntimePath() {
-    return runtimePath;
+    return rootFolder.getRuntimePath();
   }
 
+  @Override
   public IProject getProject() {
     return project;
   }

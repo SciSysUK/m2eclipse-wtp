@@ -10,18 +10,17 @@ import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.wst.common.componentcore.resources.IVirtualFile;
 
+
 /**
  * Adapts content from a {@link JarFile} into a {@link IVirtualFile}.
  */
 class JarVirtualFile extends PartialReadOnlyVirtualFile {
 
+  private JarVirtualFolder owner;
+
   private JarEntry entry;
 
-  private String name;
-
   private IPath runtimePath;
-
-  private JarFileVirtualFolder jarFileVirtualFolder;
 
   /**
    * Create a new {@link JarVirtualFile}.
@@ -31,18 +30,27 @@ class JarVirtualFile extends PartialReadOnlyVirtualFile {
    * @param name
    * @param runtimePath
    */
-  public JarVirtualFile(JarFileVirtualFolder jarFileVirtualFolder, JarEntry jarEntry, String name, IPath runtimePath) {
-    this.jarFileVirtualFolder = jarFileVirtualFolder;
+  public JarVirtualFile(JarVirtualFolder owner, JarEntry jarEntry, IPath runtimePath) {
+    this.owner = owner;
     this.entry = jarEntry;
-    this.name = name;
     this.runtimePath = runtimePath;
   }
 
   @Override
   public IProject getProject() {
-    return jarFileVirtualFolder.getProject();
+    return owner.getProject();
   }
 
+  @Override
+  public IPath getRuntimePath() {
+    return runtimePath;
+  }
+
+  @Override
+  public String getName() {
+    return runtimePath.lastSegment();
+  }
+  
   @Override
   @SuppressWarnings("rawtypes")
   public Object getAdapter(Class adapter) {
@@ -55,16 +63,6 @@ class JarVirtualFile extends PartialReadOnlyVirtualFile {
   }
 
   private IFile unpack() {
-    return jarFileVirtualFolder.unpackJarEntry(entry);
-  }
-
-  @Override
-  public IPath getRuntimePath() {
-    return runtimePath;
-  }
-
-  @Override
-  public String getName() {
-    return name;
-  }
+    return owner.unpackJarEntry(entry);
+  }  
 }

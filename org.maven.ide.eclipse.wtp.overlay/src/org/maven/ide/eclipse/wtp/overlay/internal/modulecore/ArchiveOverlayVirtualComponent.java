@@ -9,7 +9,7 @@ import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.wst.common.componentcore.internal.resources.VirtualArchiveComponent;
 import org.eclipse.wst.common.componentcore.resources.IVirtualFolder;
-import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.resource.JarFileVirtualFolder;
+import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.resource.JarVirtualFolder;
 import org.maven.ide.eclipse.wtp.overlay.modulecore.IOverlayVirtualComponent;
 
 
@@ -38,7 +38,7 @@ public class ArchiveOverlayVirtualComponent extends VirtualArchiveComponent impl
   private IVirtualFolder getUnfilteredRootFolder() {
     File archive = getArchive();
     try {
-      return new JarFileVirtualFolder(getProject(), archive, unpackDirPath);
+      return new JarVirtualFolder(getProject(), archive, unpackDirPath);
     } catch(Exception e) {
       e.printStackTrace();
       throw new RuntimeException(e.getLocalizedMessage(), e);
