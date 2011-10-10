@@ -202,7 +202,7 @@ public class OverlayConfigurator extends WTPProjectConfigurator {
     if(overlayProject != null && overlayProject.equals(project)) {
       return OverlayComponentCore.createSelfOverlayComponent(overlayProject);
     }
-    return OverlayComponentCore.createOverlayComponent(overlayProject, overlay.getType());
+    return OverlayComponentCore.createOverlayComponent(overlayProject, overlay.getType(), overlay.getClassifier());
   }
 
   /**

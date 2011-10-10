@@ -238,7 +238,7 @@ class WebProjectConfiguratorDelegate extends AbstractProjectConfiguratorDelegate
     for(IMavenProjectFacade dependency : exportedDependencies) {
       String depPackaging = dependency.getPackaging();
       if ("pom".equals(depPackaging) //MNGECLIPSE-744 pom dependencies shouldn't be deployed
-          || "war".equals(depPackaging) //Overlays are dealt with the overlay configurator
+          || "war".equals(depPackaging) || "war-overlay".equals(depPackaging) //Overlays are dealt with the overlay configurator
           || "zip".equals(depPackaging)) {
         continue;
       }

@@ -17,8 +17,12 @@ import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.ProjectOverlayVirtu
 @SuppressWarnings("restriction")
 public class ProjectOverlayURIResolver extends AbstractOverlayURIResolver<ProjectOverlayVirtualComponent> {
 
-  private static final String OVERLAY_TYPE = "type";
+	private static final String CLASSIFIER = "classifier";
 
+	private static final String TYPE = "type";
+
+	private static final String WAR = "war";
+  
   @Override
   protected String getType() {
     return "prj";
@@ -33,17 +37,24 @@ public class ProjectOverlayURIResolver extends AbstractOverlayURIResolver<Projec
   protected OverlayURI doResolve(ProjectOverlayVirtualComponent component) {
     String name = component.getName();
     Map<String, String> parameters = new HashMap<String, String>();
-    if(component.getOverlayType() != null) {
-      parameters.put(OVERLAY_TYPE, component.getOverlayType());
+    if(component.getClassifier() != null) {
+      parameters.put(CLASSIFIER, component.getClassifier());
     }
-    return newOverlayURI(Collections.singletonList(name), null);
+    if (!component.getPackagingType().equals(WAR)) {
+    	parameters.put(TYPE, component.getPackagingType());
+    }
+    return newOverlayURI(Collections.singletonList(name), parameters);
   }
 
   @Override
   protected ProjectOverlayVirtualComponent doResolve(IProject project, IPath runtimePath, OverlayURI uri) {
     String name = uri.getSegments().get(0);
-    String overlayType = uri.getParameters().get(OVERLAY_TYPE);
+    String classifier = uri.getParameters().get(CLASSIFIER);
+    String packagingType = uri.getParameters().get(TYPE);
+    if (packagingType == null) {
+    	packagingType = WAR;
+    }
     IProject overlayProject = ResourcesPlugin.getWorkspace().getRoot().getProject(name);
-    return new ProjectOverlayVirtualComponent(overlayProject, overlayType);
+    return new ProjectOverlayVirtualComponent(overlayProject, packagingType, classifier);
   }
 }

@@ -12,9 +12,7 @@ import org.eclipse.jst.common.internal.modulecore.AddClasspathFoldersParticipant
 import org.eclipse.jst.common.internal.modulecore.AddClasspathLibReferencesParticipant;
 import org.eclipse.jst.common.internal.modulecore.AddMappedOutputFoldersParticipant;
 import org.eclipse.jst.common.internal.modulecore.IgnoreJavaInSourceFolderParticipant;
-import org.eclipse.jst.common.internal.modulecore.SingleRootExportParticipant;
 import org.eclipse.jst.j2ee.internal.common.exportmodel.JEEHeirarchyExportParticipant;
-import org.eclipse.jst.j2ee.internal.common.exportmodel.JavaEESingleRootCallback;
 import org.eclipse.wst.common.componentcore.ComponentCore;
 import org.eclipse.wst.common.componentcore.internal.flat.FlatVirtualComponent;
 import org.eclipse.wst.common.componentcore.internal.flat.FlatVirtualComponent.FlatComponentTaskModel;
@@ -43,25 +41,30 @@ public class ProjectOverlayVirtualComponent extends VirtualComponent implements 
 
   private IProject overlayProject;
 
-  private OverlayVirtualComponentHelper overlayFilter = new OverlayVirtualComponentHelper();
+  private OverlayVirtualComponentHelper helper;
 
-  private String overlayType;
+  private String classifier;
+
+  private String packagingType;
 
   /**
    * Create anew {@link ProjectOverlayVirtualComponent} instance.
    * 
    * @param overlayProject the project being overlayed
-   * @param overlayType the overlay type
+   * @param classifier the overlay classifier
+   * @param packagingType the packaging type
    */
-  public ProjectOverlayVirtualComponent(IProject overlayProject, String overlayType) {
+  public ProjectOverlayVirtualComponent(IProject overlayProject, String packagingType, String classifier) {
     super(overlayProject, ROOT);
     this.overlayProject = overlayProject;
-    this.overlayType = overlayType;
+    this.packagingType = packagingType;
+    this.classifier = classifier;
+    helper = new OverlayVirtualComponentHelper();
   }
 
   public IVirtualFolder getRootFolder() {
     //FIXME cache the result
-    return overlayFilter.getFilteredRootFolder(getUnfilteredRootFolder());
+    return helper.getFilteredRootFolder(getUnfilteredRootFolder());
   }
 
   private FlatVirtualComponentVirtualFolder getUnfilteredRootFolder() {
@@ -81,12 +84,14 @@ public class ProjectOverlayVirtualComponent extends VirtualComponent implements 
 
   private List<IFlattenParticipant> getFlattenParticipants() {
     List<IFlattenParticipant> participants = new ArrayList<IFlattenParticipant>();
-    participants.add(new SingleRootExportParticipant(new JavaEESingleRootCallback()));
     participants.add(new JEEHeirarchyExportParticipant());
     participants.add(new AddClasspathLibReferencesParticipant());
     participants.add(new AddClasspathFoldersParticipant());
     participants.add(new AddMappedOutputFoldersParticipant());
     participants.add(new IgnoreJavaInSourceFolderParticipant());
+    if ("war-overlay".equals(packagingType)) {
+      participants.add(new WarOverlayIgnoreParticipant(classifier));
+    }
     return participants;
   }
 
@@ -94,31 +99,35 @@ public class ProjectOverlayVirtualComponent extends VirtualComponent implements 
   public IVirtualReference[] getReferences(Map<String, Object> options) {
     try {
       Set<IVirtualReference> references = getUnfilteredRootFolder().getReferences();
-      Set<IVirtualReference> filteredReferences = overlayFilter.getFilteredReferences(references);
+      Set<IVirtualReference> filteredReferences = helper.getFilteredReferences(references);
       return filteredReferences.toArray(new IVirtualReference[filteredReferences.size()]);
     } catch(CoreException e) {
       throw new RuntimeException(e);
     }
   }
 
-  public String getOverlayType() {
-    return overlayType;
+  public String getClassifier() {
+    return classifier;
+  }
+
+  public String getPackagingType() {
+    return packagingType;
   }
 
   public void setInclusions(Set<String> inclusions) {
-    overlayFilter.setInclusions(inclusions);
+    helper.setInclusions(inclusions);
   }
 
   public void setExclusions(Set<String> exclusions) {
-    overlayFilter.setExclusions(exclusions);
+    helper.setExclusions(exclusions);
   }
 
   public Set<String> getInclusions() {
-    return overlayFilter.getInclusions();
+    return helper.getInclusions();
   }
 
   public Set<String> getExclusions() {
-    return overlayFilter.getExclusions();
+    return helper.getExclusions();
   }
 
   @Override
@@ -133,7 +142,11 @@ public class ProjectOverlayVirtualComponent extends VirtualComponent implements 
     if(!super.equals(obj)) {
       return false;
     }
-    if(!overlayFilter.equals(other.overlayFilter)) {
+    if(!helper.equals(other.helper)) {
+      return false;
+    }
+    // FIXME Add Packaging type
+    if(classifier != other.classifier && (classifier != null && !classifier.equals(other.classifier))) {
       return false;
     }
     return true;
@@ -143,7 +156,11 @@ public class ProjectOverlayVirtualComponent extends VirtualComponent implements 
   public int hashCode() {
     final int prime = 31;
     int result = super.hashCode();
-    result = prime * result + overlayFilter.hashCode();
+    result = prime * result + helper.hashCode();
+    if(classifier != null) {
+      result = prime * result + classifier.hashCode();
+    }
     return result;
   }
+
 }

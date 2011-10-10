@@ -21,8 +21,8 @@ import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.SelfOverlayVirtualC
  */
 public class OverlayComponentCore {
 	
-	public static IOverlayVirtualComponent createOverlayComponent(IProject aProject, String type) {
-		return new ProjectOverlayVirtualComponent(aProject, type);
+	public static IOverlayVirtualComponent createOverlayComponent(IProject aProject, String packagingType, String classifier) {
+		return new ProjectOverlayVirtualComponent(aProject, packagingType, classifier);
 	}
 
 	//TODO check and prevent circular references
