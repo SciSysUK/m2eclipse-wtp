@@ -2,7 +2,7 @@
 <feature
       id="org.maven.ide.eclipse.wtp.feature"
       label="Maven Integration for WTP"
-      version="0.14.0.qualifier"
+      version="0.15.0.qualifier"
       provider-name="JBoss by Red Hat"
       plugin="org.maven.ide.eclipse.wtp">
 
@@ -51,6 +51,13 @@ http://www.eclipse.org/legal/epl-v10.html
 
    <plugin
          id="org.maven.ide.eclipse.wtp.overlay"
+         download-size="0"
+         install-size="0"
+         version="0.0.0"
+         unpack="false"/>
+
+   <plugin
+         id="org.maven.ide.eclipse.wtp.overlay.ui"
          download-size="0"
          install-size="0"
          version="0.0.0"

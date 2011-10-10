@@ -15,9 +15,9 @@
     <version>0.15.0-SNAPSHOT</version>
   </parent>
 
-  <artifactId>org.maven.ide.eclipse.wtp.overlay</artifactId>
+  <artifactId>org.maven.ide.eclipse.wtp.overlay.ui</artifactId>
   <packaging>eclipse-plugin</packaging>
 
-  <name>Overlay support for Eclipse WTP plugin</name>
+  <name>UI Overlay support for Eclipse WTP plugin</name>
 
 </project>

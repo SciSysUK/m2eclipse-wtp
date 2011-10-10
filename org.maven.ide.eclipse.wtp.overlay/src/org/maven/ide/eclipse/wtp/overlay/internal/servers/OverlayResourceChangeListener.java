@@ -8,7 +8,9 @@ import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IResourceChangeEvent;
 import org.eclipse.core.resources.IResourceChangeListener;
 import org.eclipse.core.resources.IResourceDelta;
+import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.eclipse.wst.common.componentcore.ComponentCore;
 import org.eclipse.wst.common.componentcore.ModuleCoreNature;
 import org.eclipse.wst.common.componentcore.resources.IVirtualComponent;
@@ -16,13 +18,18 @@ import org.eclipse.wst.common.componentcore.resources.IVirtualReference;
 import org.eclipse.wst.server.core.IModule;
 import org.eclipse.wst.server.core.IServer;
 import org.eclipse.wst.server.core.ServerCore;
-import org.eclipse.wst.server.core.internal.Server;
+import org.maven.ide.eclipse.wtp.overlay.OverlayConstants;
+import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.SelfOverlayVirtualComponent;
 import org.maven.ide.eclipse.wtp.overlay.modulecore.IOverlayVirtualComponent;
 
 public class OverlayResourceChangeListener implements IResourceChangeListener {
 
 	public void resourceChanged(IResourceChangeEvent event) {
 		
+	  if (!isEnabled()) {
+	    return;
+	  }  
+	  
 		IResourceDelta delta =  event.getDelta();
 		if (delta == null) {
 			return;
@@ -50,7 +57,7 @@ public class OverlayResourceChangeListener implements IResourceChangeListener {
 			modules : for (IModule module : server.getModules()) {
 				IProject moduleProject = module.getProject();
 				for (IProject changedProject : changedProjects) {
-					if (isOverlaid(changedProject, moduleProject)) {
+					if (hasOverlayChanged(changedProject, moduleProject, delta)) {
 						//System.err.println(moduleProject.getName() + " overlays " +changedProject.getName());
 						republishableServers.add(server);
 						break modules;
@@ -60,15 +67,23 @@ public class OverlayResourceChangeListener implements IResourceChangeListener {
 		}
 		
 		for(IServer server : republishableServers) {
-			if (server instanceof Server) {
-				//System.err.println("Clearing "+server.getName() + "'s module cache");
-				synchronized (server) {
-					((Server)server).clearModuleCache();
+			/* Looks like clearing the module cache is no longer necessary 
+				if (server instanceof Server) {
+				  //System.err.println("Clearing "+server.getName() + "'s module cache");
+					synchronized (server) {
+						//((Server)server).clearModuleCache();
+					}
 				}
-				//TODO Publish more elegantly (check server status ...)
-				server.publish(IServer.PUBLISH_INCREMENTAL, new NullProgressMonitor());
-			}
+			*/
+			//TODO Publish more elegantly (check server status ...)
+			server.publish(IServer.PUBLISH_INCREMENTAL, new NullProgressMonitor());
 		}
+	}
+
+	private boolean isEnabled() {
+	  boolean isEnabled = new InstanceScope().getNode(OverlayConstants.PLUGIN_ID)
+	                      .getBoolean(OverlayConstants.P_REPUBLISH_ON_PROJECT_CHANGE, true);
+	  return isEnabled;
 	}
 
 	private Set<IProject> getChangedProjects(IResourceDelta[] projectDeltas) {
@@ -83,14 +98,15 @@ public class OverlayResourceChangeListener implements IResourceChangeListener {
 		}
 		return projects;
 	}
-
+	
 	/**
 	 * Return true if moduleProject references changedProject as an IOverlayComponent
 	 * @param changedProject
 	 * @param projectDeployedOnServer
+	 * @param delta 
 	 * @return true if moduleProject references changedProject as an IOverlayComponent
 	 */
-	private boolean isOverlaid(IProject changedProject, IProject projectDeployedOnServer) {
+	private boolean hasOverlayChanged(IProject changedProject, IProject projectDeployedOnServer, IResourceDelta delta) {
 		if (!ModuleCoreNature.isFlexibleProject(projectDeployedOnServer)) {
 			return false; 
 		}
@@ -104,11 +120,16 @@ public class OverlayResourceChangeListener implements IResourceChangeListener {
 		}
 		for (IVirtualReference reference : references) {
 			IVirtualComponent vc = reference.getReferencedComponent();
-			if (vc != null 
-			    && vc instanceof IOverlayVirtualComponent 
-			    && changedProject.equals(vc.getProject())
-			    ) {
-				return true;
+			if (vc instanceof IOverlayVirtualComponent){
+			  IProject overlaidProject = vc.getProject(); 
+			  if (vc instanceof SelfOverlayVirtualComponent) {
+			    IPath componentFilePath = overlaidProject.getFile(".settings/org.eclipse.wst.common.component").getFullPath();
+			    if (delta.findMember(componentFilePath) != null) {
+			      return true;
+			    }
+			  } else if (!vc.isBinary() && overlaidProject.equals(changedProject)){
+			    return true;
+			  }
 			}
 		}
 		return false;

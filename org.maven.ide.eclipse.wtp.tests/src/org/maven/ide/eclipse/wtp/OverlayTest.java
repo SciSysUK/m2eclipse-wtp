@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
+import org.eclipse.core.resources.IncrementalProjectBuilder;
 import org.eclipse.m2e.core.project.ResolverConfiguration;
 import org.eclipse.wst.common.componentcore.ComponentCore;
 import org.eclipse.wst.common.componentcore.resources.IVirtualComponent;
@@ -22,27 +23,33 @@ public class OverlayTest extends AbstractWTPTestCase {
   public void testArchiveOverlay() throws Exception {
       IProject war = importProject("projects/overlays/war-overlay1/pom.xml");
       waitForJobsToComplete();
+      war.build(IncrementalProjectBuilder.INCREMENTAL_BUILD, monitor);
+      waitForJobsToComplete();
       assertNoErrors(war);
-      
+      System.out.println("Build complete"+war);
       IVirtualComponent comp = ComponentCore.createComponent(war);
       assertNotNull(comp);
       
       IVirtualReference[] references = comp.getReferences();
-      
       assertEquals(2, references.length);
-      
       assertEquals(ArchiveOverlayVirtualComponent.class, references[0].getReferencedComponent().getClass());
+      assertEquals(SelfOverlayVirtualComponent.class, references[1].getReferencedComponent().getClass());
+      System.out.println("2 references read for "+war);
       
+      System.out.println("Creating preview server");
       IServer server = TestServerUtil.createPreviewServer();
+      System.out.println("adding project to preview server");
       TestServerUtil.addProjectToServer(war, server);
-      
+      System.out.println("project added to preview server");
+
       List<String> resources = TestServerUtil.toList(TestServerUtil.getServerModuleResources(war));
+      System.out.println("server module resources :"+resources.size());
       
-      assertTrue(resources.contains("META-INF/MANIFEST.MF"));
-      assertTrue(resources.contains("WEB-INF/lib/junit-3.8.2.jar"));
-      assertTrue(resources.contains("index.html"));
-      assertTrue(resources.contains("excluded/included.properties"));
-      assertTrue(resources.contains("excluded/excluded.properties"));
+      assertTrue("META-INF/MANIFEST.MF is missing from "+ resources, resources.contains("META-INF/MANIFEST.MF"));
+      assertTrue("WEB-INF/lib/junit-3.8.2.jar is missing from "+ resources,resources.contains("WEB-INF/lib/junit-3.8.2.jar"));
+      assertTrue("index.html is missing from "+ resources,resources.contains("index.html"));
+      assertTrue("excluded/included.properties is missing from "+ resources, resources.contains("excluded/included.properties"));
+      assertTrue("excluded/excluded.properties is missing from "+ resources, resources.contains("excluded/excluded.properties"));
   }
   
   @Test
@@ -71,11 +78,11 @@ public class OverlayTest extends AbstractWTPTestCase {
       
       List<String> resources = TestServerUtil.toList(TestServerUtil.getServerModuleResources(war));
       
-      assertTrue("META-INF/MANIFEST.MF is missing", resources.contains("META-INF/MANIFEST.MF"));
-      assertTrue("WEB-INF/lib/junit-3.8.1.jar is missing",resources.contains("WEB-INF/lib/junit-3.8.1.jar"));
-      assertTrue("index.html is missing",resources.contains("index.html"));
-      assertTrue("excluded/included.properties is missing", resources.contains("excluded/included.properties"));
-      assertTrue("excluded/excluded.properties is missing", resources.contains("excluded/excluded.properties"));
+      assertTrue("META-INF/MANIFEST.MF is missing from "+ resources, resources.contains("META-INF/MANIFEST.MF"));
+      assertTrue("WEB-INF/lib/junit-3.8.1.jar is missing from "+ resources,resources.contains("WEB-INF/lib/junit-3.8.1.jar"));
+      assertTrue("index.html is missing from "+ resources,resources.contains("index.html"));
+      assertTrue("excluded/included.properties is missing from "+ resources, resources.contains("excluded/included.properties"));
+      assertTrue("excluded/excluded.properties is missing from "+ resources, resources.contains("excluded/excluded.properties"));
       
       updateProject(overlaid, "pom2.xml");
       assertNoErrors(overlaid);
@@ -196,7 +203,6 @@ public class OverlayTest extends AbstractWTPTestCase {
       assertNotNull(comp);
       
       IVirtualReference[] references = comp.getReferences();
-      
       assertEquals(2, references.length);
       
       assertEquals(ArchiveOverlayVirtualComponent.class, references[0].getReferencedComponent().getClass());
