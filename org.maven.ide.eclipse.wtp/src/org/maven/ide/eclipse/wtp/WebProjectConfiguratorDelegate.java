@@ -18,7 +18,6 @@ import java.util.List;
 import java.util.Set;
 
 import org.apache.maven.artifact.Artifact;
-import org.apache.maven.artifact.ArtifactUtils;
 import org.apache.maven.project.MavenProject;
 import org.codehaus.plexus.util.FileUtils;
 import org.codehaus.plexus.util.StringUtils;
@@ -47,6 +46,7 @@ import org.eclipse.m2e.jdt.IClasspathEntryDescriptor;
 import org.eclipse.wst.common.componentcore.ComponentCore;
 import org.eclipse.wst.common.componentcore.ModuleCoreNature;
 import org.eclipse.wst.common.componentcore.resources.IVirtualComponent;
+import org.eclipse.wst.common.componentcore.resources.IVirtualFolder;
 import org.eclipse.wst.common.componentcore.resources.IVirtualReference;
 import org.eclipse.wst.common.componentcore.resources.IVirtualResource;
 import org.eclipse.wst.common.frameworks.datamodel.DataModelFactory;
@@ -87,6 +87,11 @@ class WebProjectConfiguratorDelegate extends AbstractProjectConfiguratorDelegate
   * Name of maven property that overrides WTP context root.
   */
   private static final String M2ECLIPSE_WTP_CONTEXT_ROOT = "m2eclipse.wtp.contextRoot";
+  
+  /**
+   * Name of maven property that allows additional deployments
+   */
+  private static final String DEPLOY_PROPERTY = "m2eclipse.wtp.deploy";
 
   protected void configure(IProject project, MavenProject mavenProject, IProgressMonitor monitor)
       throws CoreException {
@@ -192,9 +197,9 @@ class WebProjectConfiguratorDelegate extends AbstractProjectConfiguratorDelegate
       WTPProjectsUtil.setDefaultDeploymentDescriptorFolder(component.getRootFolder(), warPath, monitor);
       
       WTPProjectsUtil.deleteLinks(project, ROOT_PATH, sourcePaths, monitor);
+      
+      configureAdditionalFolders(mavenProject, component, monitor);
     }
-    
-
     
     if (!manifestAlreadyExists && manifest.exists()) {
       manifest.delete(true, monitor);
@@ -205,6 +210,21 @@ class WebProjectConfiguratorDelegate extends AbstractProjectConfiguratorDelegate
     }
     
     WTPProjectsUtil.removeWTPClasspathContainer(project);
+  }
+  
+  /**
+   * @param component
+   * @throws CoreException
+   */
+  private void configureAdditionalFolders(MavenProject mavenProject, IVirtualComponent component, IProgressMonitor monitor) throws CoreException {
+    String deploymentsList = (String) mavenProject.getProperties().get(DEPLOY_PROPERTY);
+    if(!StringUtils.isBlank(deploymentsList)) {
+      for(String deployment : deploymentsList.split(",")) {
+        Path path = new Path(deployment);
+        IVirtualFolder folder = component.getRootFolder().getFolder(path);
+        folder.createLink(path, IVirtualResource.NONE, monitor);
+      }
+    }
   }
 
   private IDataModel getWebModelConfig(String warSourceDirectory, String contextRoot) {
