@@ -63,7 +63,6 @@ public class ProjectOverlayVirtualComponent extends VirtualComponent implements 
   }
 
   public IVirtualFolder getRootFolder() {
-    //FIXME cache the result
     return helper.getFilteredRootFolder(getUnfilteredRootFolder());
   }
 
