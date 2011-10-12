@@ -1,3 +1,10 @@
+/*******************************************************************************
+ * Copyright (c) 2011 JBoss by Red Hat.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *******************************************************************************/
 
 package org.maven.ide.eclipse.wtp.overlay.modulecore;
 
@@ -31,8 +38,6 @@ import org.maven.ide.eclipse.wtp.overlay.internal.modulecore.uri.SelfOverlayURIR
  */
 @SuppressWarnings("restriction")
 public class OverlayReferenceResolver implements IReferenceResolver {
-
-  //FIXME replace calls to ModuleURIUtil
 
   private static final String SCHEME = "module";
 
@@ -157,9 +162,9 @@ public class OverlayReferenceResolver implements IReferenceResolver {
   }
   
   /**
-   * Extract query paramters as a Map from the specified URI.
+   * Extract query parameters as a Map from the specified URI.
    * @param uri the URI
-   * @return a paramter map
+   * @return a parameter map
    */
   private Map<String, String> getParameters(URI uri) {
     return ModuleURIUtil.getParameters(uri.toString());
