@@ -144,8 +144,10 @@ public class ProjectOverlayVirtualComponent extends VirtualComponent implements 
     if(!helper.equals(other.helper)) {
       return false;
     }
-    // FIXME Add Packaging type
     if(classifier != other.classifier && (classifier != null && !classifier.equals(other.classifier))) {
+      return false;
+    }
+    if(packagingType != other.packagingType && (packagingType != null && !packagingType.equals(other.packagingType))) {
       return false;
     }
     return true;
@@ -158,6 +160,9 @@ public class ProjectOverlayVirtualComponent extends VirtualComponent implements 
     result = prime * result + helper.hashCode();
     if(classifier != null) {
       result = prime * result + classifier.hashCode();
+    }
+    if(packagingType != null) {
+      result = prime * result + packagingType.hashCode();
     }
     return result;
   }
